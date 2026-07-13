@@ -97,6 +97,7 @@ jobs:
           name: test-results
           path: |
             appium.log
+            dom-snapshots/
             screen-*.png
           retention-days: 7
 

@@ -104,6 +104,21 @@ function extractFailures(log) {
     }));
 }
 
+// Preferred source: DOM snapshots captured by wdio.conf.ts `afterTest` AT THE
+// MOMENT each test failed — so they contain the actual failing screen (unlike a
+// post-hoc adb dump, which only sees whatever screen the app ended on).
+const DOM_SNAPSHOT_DIR = path.join(__dirname, '../../dom-snapshots');
+function getFailureDoms() {
+  if (!fs.existsSync(DOM_SNAPSHOT_DIR)) return null;
+  const files = fs.readdirSync(DOM_SNAPSHOT_DIR).filter(f => f.endsWith('.xml'));
+  if (files.length === 0) return null;
+  return files
+    .map(f => `### Failing screen: ${f}\n${fs.readFileSync(path.join(DOM_SNAPSHOT_DIR, f), 'utf8').slice(0, 6000)}`)
+    .join('\n\n');
+}
+
+// Fallback: dump the CURRENT screen via ADB (only useful if the app is still on
+// the failing screen — e.g. a single-screen run).
 function getUiHierarchy() {
   try {
     execSync('adb shell uiautomator dump /sdcard/window_dump.xml', { stdio: 'pipe' });
@@ -242,7 +257,9 @@ async function main() {
 
   console.log(`Found ${failures.length} selector failure(s)`);
   const failingSelectors = new Set(failures.map(f => f.selector));
-  const uiHierarchy = getUiHierarchy();
+  // Prefer failure-time DOM snapshots (real failing screen); fall back to a live dump.
+  const uiHierarchy = getFailureDoms() || getUiHierarchy();
+  if (getFailureDoms()) console.log('Using failure-time DOM snapshot(s) from dom-snapshots/');
   const pageObjects = readPageObjects();
 
   console.log(`Asking ${MODEL} (Ollama) for healing suggestions…`);

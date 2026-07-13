@@ -6,3 +6,4 @@ appium.log
 *.log
 .env
 *.pptx
+dom-snapshots/
