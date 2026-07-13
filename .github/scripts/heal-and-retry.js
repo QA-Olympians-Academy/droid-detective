@@ -156,6 +156,8 @@ A failing selector \`~X\` means "accessibility id X" (content-desc="X"). To fix 
 
 CRITICAL: if the failing \`~X\` has NO matching content-desc in the hierarchy but a node has resource-id="X" (or a clearly corresponding id), the label moved from content-desc to resource-id — use \`//*[@resource-id="X"]\`. NEVER invent a content-desc that is not present in the hierarchy.
 
+COPY ATTRIBUTE VALUES VERBATIM from the hierarchy. Do NOT add a package prefix (e.g. do NOT turn resource-id="Carousel" into "com.app:id/carousel"), and do NOT change the case. Use the exact string that appears in the XML. If the value you would use does not appear literally in the hierarchy, you are guessing — don't.
+
 Selector STRING rules (the value goes inside \`$('...')\`, a single-quoted JS string):
 - NEVER use a single quote (') in the selector. In XPath, wrap values in DOUBLE quotes: \`//*[@resource-id="Carousel"]\`.
 - One line only: no newlines, backticks, or leading/trailing spaces.
@@ -229,11 +231,24 @@ function parsePatches(text) {
   return patches;
 }
 
+// Reject selectors whose target isn't actually present in the captured DOM —
+// this catches HALLUCINATED values (e.g. a made-up package-qualified resource-id
+// like com.app:id/carousel when the real one is just "Carousel").
+function selectorTargetInDom(selector, dom) {
+  if (!dom) return true; // no DOM to check against — the other guards still apply
+  const acc = selector.match(/^~(.+)$/);
+  if (acc) return dom.includes(`content-desc="${acc[1]}"`);
+  const attrs = [...selector.matchAll(/@([\w-]+)\s*(?:=|,)\s*["']([^"']+)["']/g)];
+  if (attrs.length) return attrs.every(([, attr, val]) => dom.includes(`${attr}="${val}"`));
+  return true; // class-only xpath / unrecognized form — can't verify, allow
+}
+
 // Validate + apply each patch. A patch is rejected (never written) if the file
-// or selector is missing, the new selector is malformed, or the resulting file
-// would no longer parse — so a bad model suggestion can't corrupt a page object
-// or break the build. In dry-run mode nothing is written; results are reported.
-function applyPatches(patches, pageObjects, failingSelectors) {
+// or selector is missing, the new selector is malformed, would no longer parse,
+// or targets an element not in the captured DOM — so a bad or hallucinated model
+// suggestion can't corrupt a page object or apply a wrong selector. In dry-run
+// mode nothing is written; results are reported.
+function applyPatches(patches, pageObjects, failingSelectors, dom) {
   let applied = 0;
   for (const patch of patches) {
     const label = `${patch.file}: "${patch.oldSelector}" → "${patch.newSelector}"`;
@@ -255,6 +270,10 @@ function applyPatches(patches, pageObjects, failingSelectors) {
     }
     if (!isSafeSelector(patch.newSelector)) {
       console.warn(`✗ reject (malformed selector — would break the string literal): ${label}`);
+      continue;
+    }
+    if (!selectorTargetInDom(patch.newSelector, dom)) {
+      console.warn(`✗ reject (target not in captured DOM — likely a hallucinated value): ${label}`);
       continue;
     }
     const updated = content.replaceAll(patch.oldSelector, patch.newSelector);
@@ -301,12 +320,12 @@ async function main() {
 
   if (DRY_RUN) {
     console.log(`\n🔍 DRY RUN — validating ${patches.length} proposed patch(es), no files written:`);
-    const valid = applyPatches(patches, pageObjects, failingSelectors);
+    const valid = applyPatches(patches, pageObjects, failingSelectors, uiHierarchy);
     console.log(`\n${valid} of ${patches.length} proposed patch(es) are valid and would be applied.`);
     process.exit(valid > 0 ? 0 : 1);
   }
 
-  const applied = applyPatches(patches, pageObjects, failingSelectors);
+  const applied = applyPatches(patches, pageObjects, failingSelectors, uiHierarchy);
   console.log(`Applied ${applied} patch(es)`);
 
   if (applied > 0) {
