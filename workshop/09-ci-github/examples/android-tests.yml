@@ -53,9 +53,27 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      # 7. Start the emulator, run tests, capture outcome
-      #    continue-on-error: true lets us run healing even after failure
-      - name: Run Android tests
+      # 6b. Install a local LLM (Ollama + llama3.1) BEFORE the emulator step so
+      #     self-healing — which runs INSIDE that step — can reach it. No cloud
+      #     key needed; on CI the model runs on CPU (no GPU), so it is slow.
+      - name: Cache Ollama model
+        uses: actions/cache@v4
+        with:
+          path: ~/.ollama/models
+          key: ollama-llama3.1
+
+      - name: Install Ollama and pull model
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          ollama serve &
+          sleep 5
+          ollama pull llama3.1
+
+      # 7. Run tests and self-heal on failure — all INSIDE the emulator action,
+      #    the only place adb, the live DOM dump, and the `pnpm test` retry can
+      #    see a running device. continue-on-error keeps the job alive;
+      #    run_tests.outcome reflects the POST-heal result (green if recovered).
+      - name: Run Android tests (heal on failure)
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 34
@@ -64,9 +82,8 @@ jobs:
           avd-name: test_avd
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           disable-animations: true
-          script: pnpm test
+          script: pnpm test || node .github/scripts/heal-and-retry.js
         env:
-          # WDIO specs are deterministic; these only matter if a spec triggers the agent.
           LLM_BASE_URL: http://localhost:11434/v1
           LLM_MODEL: llama3.1
         continue-on-error: true
@@ -83,31 +100,9 @@ jobs:
             screen-*.png
           retention-days: 7
 
-      # 8b. Install a local LLM (Ollama + llama3.1) for the AI steps below.
-      #     No cloud key needed — models run locally. On CI they run on CPU
-      #     (no GPU), so inference is slow.
-      - name: Cache Ollama model
-        uses: actions/cache@v4
-        with:
-          path: ~/.ollama/models
-          key: ollama-llama3.1
-
-      - name: Install Ollama and pull model
-        run: |
-          curl -fsSL https://ollama.com/install.sh | sh
-          ollama serve &
-          sleep 5
-          ollama pull llama3.1
-
-      # 9. Self-heal: only when tests failed
-      - name: Self-heal failing tests
-        if: steps.run_tests.outcome == 'failure'
-        run: node .github/scripts/heal-and-retry.js
-        env:
-          LLM_BASE_URL: http://localhost:11434/v1
-          LLM_MODEL: llama3.1
-
-      # 10. Open a GitHub issue with AI failure analysis (main branch only)
+      # 9. Open a GitHub issue with AI failure analysis (main branch only).
+      #    This reads appium.log (a file) + calls the model — no device needed,
+      #    so it correctly runs as a step after the emulator action.
       - name: Analyse failures and open issue
         if: steps.run_tests.outcome == 'failure' && github.ref == 'refs/heads/main'
         run: node .github/scripts/analyse-failures.js
