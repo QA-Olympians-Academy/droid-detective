@@ -42,7 +42,6 @@
     "@anthropic-ai/sdk": "^0.90.0",
     "appclaw": "^1.1.0",
     "commander": "^14.0.3",
-    "openai": "^4.104.0",
     "pptxgenjs": "^3.12.0"
   }
 }
