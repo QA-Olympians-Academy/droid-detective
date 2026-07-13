@@ -112,8 +112,11 @@ function getFailureDoms() {
   if (!fs.existsSync(DOM_SNAPSHOT_DIR)) return null;
   const files = fs.readdirSync(DOM_SNAPSHOT_DIR).filter(f => f.endsWith('.xml'));
   if (files.length === 0) return null;
+  // Full content (not truncated) — the DOM-existence guard must see every
+  // element, and the target may sit deep in the tree. The prompt is truncated
+  // separately in askModelToHeal to bound the model's context.
   return files
-    .map(f => `### Failing screen: ${f}\n${fs.readFileSync(path.join(DOM_SNAPSHOT_DIR, f), 'utf8').slice(0, 6000)}`)
+    .map(f => `### Failing screen: ${f}\n${fs.readFileSync(path.join(DOM_SNAPSHOT_DIR, f), 'utf8')}`)
     .join('\n\n');
 }
 
@@ -179,7 +182,7 @@ async function askModelToHeal(failures, uiHierarchy, pageObjects) {
     .join('\n\n');
 
   const hierarchySection = uiHierarchy
-    ? `\n\n## Current UI Hierarchy (ADB dump)\n\`\`\`xml\n${uiHierarchy.slice(0, 8000)}\n\`\`\``
+    ? `\n\n## Current UI Hierarchy (ADB dump)\n\`\`\`xml\n${uiHierarchy.slice(0, 24000)}\n\`\`\``
     : '';
 
   const prompt = `Fix these failing selectors from a WebdriverIO + Appium test run.
@@ -194,8 +197,8 @@ ${pageObjectsText}
 Output one FILE/OLD/NEW/REASON block per failing selector, in the format described.`;
 
   // Small local models are non-deterministic about output format — retry a few
-  // times until we get parseable FILE/OLD/NEW blocks.
-  const MAX_ATTEMPTS = 3;
+  // times until we get a parseable patch (parsePatches accepts blocks OR JSON).
+  const MAX_ATTEMPTS = 5;
   let lastText = '';
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     const response = await client.chat.completions.create({
@@ -214,21 +217,40 @@ Output one FILE/OLD/NEW/REASON block per failing selector, in the format describ
   return [];
 }
 
-// Parse the model's plain FILE/OLD/NEW/REASON blocks (separated by `---`). This
-// format carries no quotes of its own, so selectors containing double quotes
-// (valid XPath) survive intact — unlike JSON, which small models fail to escape.
+// Parse the model's patches, tolerant of how a small local model actually
+// responds: the preferred plain FILE/OLD/NEW/REASON blocks (possibly wrapped in
+// markdown bold/bullets/fences), and — as a fallback — a JSON array.
 function parsePatches(text) {
-  const strip = s => s.replace(/^\s*[`'"]+|[`'"]+\s*$/g, '').trim();
+  // Strip surrounding markdown/quote decoration from a captured value.
+  const strip = s => s.replace(/^[\s>*`'"-]+/, '').replace(/[\s*`'"]+$/, '').trim();
   const patches = [];
+
+  // 1) Preferred: FILE/OLD/NEW/REASON blocks. Leading markdown (**, -, >, #) and
+  //    a trailing "**" after the label are tolerated.
   for (const block of text.split(/^\s*-{3,}\s*$/m)) {
-    const grab = re => { const m = block.match(re); return m ? strip(m[1]) : ''; };
-    const file = grab(/^\s*FILE:\s*(.+)$/m);
-    const oldSelector = grab(/^\s*OLD:\s*(.+)$/m);
-    const newSelector = grab(/^\s*NEW:\s*(.+)$/m);
-    const reason = grab(/^\s*REASON:\s*(.+)$/m) || 'healed';
+    const grab = label => {
+      const m = block.match(new RegExp(`^[\\s>*\`#-]*${label}:\\**\\s*(.+)$`, 'mi'));
+      return m ? strip(m[1]) : '';
+    };
+    const file = grab('FILE');
+    const oldSelector = grab('OLD');
+    const newSelector = grab('NEW');
+    const reason = grab('REASON') || 'healed';
     if (file && oldSelector && newSelector) patches.push({ file, oldSelector, newSelector, reason });
   }
-  return patches;
+  if (patches.length) return patches;
+
+  // 2) Fallback: a JSON array (some runs emit JSON despite the instructions).
+  const m = text.match(/\[[\s\S]*\]/);
+  if (m) {
+    try {
+      const arr = JSON.parse(m[0].replace(/,(\s*[\]}])/g, '$1'));
+      return (Array.isArray(arr) ? arr : [])
+        .filter(p => p && p.file && p.oldSelector && p.newSelector)
+        .map(p => ({ file: p.file, oldSelector: p.oldSelector, newSelector: p.newSelector, reason: p.reason || 'healed' }));
+    } catch { /* unparseable JSON (e.g. unescaped quotes) — give up */ }
+  }
+  return [];
 }
 
 // Reject selectors whose target isn't actually present in the captured DOM —
