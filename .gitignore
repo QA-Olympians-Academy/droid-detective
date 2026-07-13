@@ -1,0 +1,8 @@
+node_modules/
+dist/
+apps/*.apk
+apps/*.ipa
+appium.log
+*.log
+.env
+*.pptx

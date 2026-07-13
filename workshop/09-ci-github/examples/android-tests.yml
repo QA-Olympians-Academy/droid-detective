@@ -1,0 +1,129 @@
+name: Android Tests (Annotated Workshop Example)
+
+# TRIGGER: runs on PRs to main, and on manual dispatch
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      self_heal:
+        description: 'Run self-healing on failures'
+        type: boolean
+        default: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      # 1. Checkout the repo
+      - uses: actions/checkout@v4
+
+      # 2. Set up pnpm (must come before setup-node for caching to work)
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      # 3. Set up Node and restore pnpm cache
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      # 4. Install dependencies
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # 5. Install the UIAutomator2 Appium driver
+      - name: Install Appium driver
+        run: pnpm appium:install-driver
+
+      # 6. Enable KVM for hardware-accelerated emulation (Ubuntu only)
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | \
+            sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      # 7. Start the emulator, run tests, capture outcome
+      #    continue-on-error: true lets us run healing even after failure
+      - name: Run Android tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          profile: pixel_6
+          avd-name: test_avd
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          disable-animations: true
+          script: pnpm test
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        continue-on-error: true
+        id: run_tests
+
+      # 8. Always upload screenshots and logs (even on failure)
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            appium.log
+            screen-*.png
+          retention-days: 7
+
+      # 9. Self-heal: only when tests failed
+      - name: Self-heal failing tests
+        if: steps.run_tests.outcome == 'failure'
+        run: node .github/scripts/heal-and-retry.js
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+      # 10. Open a GitHub issue with AI failure analysis (main branch only)
+      - name: Analyse failures and open issue
+        if: steps.run_tests.outcome == 'failure' && github.ref == 'refs/heads/main'
+        run: node .github/scripts/analyse-failures.js
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+
+      # 11. Fail the job if tests failed and healing did not recover
+      - name: Fail if not healed
+        if: steps.run_tests.outcome == 'failure'
+        run: exit 1
+
+  # Separate job: review changed selectors in PRs
+  review-locators:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # needed for git diff
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Review changed locators
+        run: node .github/scripts/review-locators.js
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}

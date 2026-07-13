@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Sample DOM hierarchy from the demo app — annotated for Chapter 4.
+
+  This is the output of: adb shell uiautomator dump /sdcard/dump.xml
+  followed by: adb pull /sdcard/dump.xml
+
+  Agent reading notes (marked with <!--[AGENT]-->):
+  - content-desc maps to accessibility ID → preferred selector (~)
+  - resource-id maps to android= UiSelector → second preference
+  - text is fragile (copy changes) → avoid unless no other option
+  - clickable="true" → element can be tapped
+  - scrollable="true" → container must be scrolled to reveal children
+-->
+<hierarchy rotation="0">
+
+  <!-- Root container — not directly interactable -->
+  <android.widget.FrameLayout
+    bounds="[0,0][1080,2400]"
+    package="com.saucelabs.mydemoapp.android">
+
+    <!-- Tab bar — always visible at top -->
+    <!--[AGENT]: This ViewGroup is the navigation bar. It contains the app's main tabs. -->
+    <android.view.ViewGroup
+      content-desc="tab-bar"
+      bounds="[0,0][1080,168]">
+
+      <!--[AGENT]: Each child is a tab. content-desc gives us the ~ selector directly. -->
+      <android.view.ViewGroup
+        content-desc="Home-tab"
+        clickable="true"
+        bounds="[0,0][216,168]"/>
+
+      <android.view.ViewGroup
+        content-desc="Webdriver-tab"
+        clickable="true"
+        bounds="[216,0][432,168]"/>
+
+      <android.view.ViewGroup
+        content-desc="Login-tab"
+        clickable="true"
+        bounds="[432,0][648,168]"/>
+
+      <android.view.ViewGroup
+        content-desc="Forms-tab"
+        clickable="true"
+        bounds="[648,0][864,168]"/>
+
+      <android.view.ViewGroup
+        content-desc="Swipe-tab"
+        clickable="true"
+        bounds="[864,0][1080,168]"/>
+
+    </android.view.ViewGroup>
+
+    <!-- Main content area — changes based on active tab -->
+    <!--[AGENT]: When Login-tab is active, this area shows the login form. -->
+    <android.widget.ScrollView
+      scrollable="true"
+      bounds="[0,168][1080,2400]">
+
+      <!--[AGENT]: The login form. Both inputs are present, so I am on the Login screen. -->
+      <android.widget.LinearLayout bounds="[0,168][1080,2400]">
+
+        <!--[AGENT]: Email field — use ~input-email (not ~email-input, note the order) -->
+        <android.widget.EditText
+          content-desc="input-email"
+          resource-id="com.saucelabs.mydemoapp.android:id/et_username"
+          text=""
+          password="false"
+          focusable="true"
+          bounds="[40,300][1040,460]"/>
+
+        <!--[AGENT]: Password field — text="" confirms it is empty -->
+        <android.widget.EditText
+          content-desc="input-password"
+          resource-id="com.saucelabs.mydemoapp.android:id/et_password"
+          text=""
+          password="true"
+          focusable="true"
+          bounds="[40,500][1040,660]"/>
+
+        <!--[AGENT]: Submit button — content-desc is "button-LOGIN", not "LOGIN-button" -->
+        <!--[AGENT]: This is a common gotcha — always read the actual value, never assume. -->
+        <android.widget.Button
+          content-desc="button-LOGIN"
+          resource-id="com.saucelabs.mydemoapp.android:id/btn_login"
+          text="LOGIN"
+          clickable="true"
+          bounds="[40,700][1040,820]"/>
+
+        <!--[AGENT]: Error message — only visible after a failed login attempt.
+             enabled="false" and bounds off-screen confirm it is currently hidden. -->
+        <android.widget.TextView
+          content-desc="sign-in-error-message"
+          resource-id="com.saucelabs.mydemoapp.android:id/tv_error"
+          text=""
+          enabled="false"
+          bounds="[40,840][1040,900]"/>
+
+        <!--[AGENT]: Sign-up link — secondary action, lower priority than login form -->
+        <android.widget.TextView
+          content-desc="sign-up-here-btn"
+          text="Sign Up Here"
+          clickable="true"
+          bounds="[300,920][780,980]"/>
+
+      </android.widget.LinearLayout>
+    </android.widget.ScrollView>
+
+  </android.widget.FrameLayout>
+</hierarchy>

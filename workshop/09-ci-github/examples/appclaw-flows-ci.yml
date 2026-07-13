@@ -1,0 +1,179 @@
+name: AppClaw Flows
+
+# Runs AppClaw YAML flows in CI — no LLM calls, fast, deterministic.
+# These are the flows recorded in Chapter 5 and committed to flows/.
+#
+# Design intent:
+#   - This job is the FIRST gate: cheap, fast, no API cost.
+#   - If a YAML flow fails here, no need to spin up self-healing.
+#     The flow itself is broken (selector changed, app updated).
+#   - Failing flows produce an artifact with the AppClaw log for diagnosis.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  appclaw-flows:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      # 1. Checkout
+      - uses: actions/checkout@v4
+
+      # 2. pnpm must come before setup-node for cache to work
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      # 3. Install project dependencies (includes appclaw)
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # 4. Install AppClaw globally if not bundled in project
+      - name: Install AppClaw CLI
+        run: npm install -g appclaw
+
+      # 5. Enable KVM for hardware-accelerated emulation
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | \
+            sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      # 6. Start the emulator and run all YAML flows.
+      #    The inner loop exits on the first failing flow (fail-fast).
+      #    Remove the `exit 1` to run all flows regardless of failures.
+      - name: Run AppClaw flows
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          profile: pixel_6
+          avd-name: test_avd
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          disable-animations: true
+          script: |
+            echo "Flows to run:"
+            ls flows/*.yaml
+
+            FAILED=0
+            for flow in flows/*.yaml; do
+              echo ""
+              echo "▶ Running: $flow"
+              if pnpm run claw:flow "$flow"; then
+                echo "✅ $flow passed"
+              else
+                echo "❌ $flow FAILED"
+                FAILED=1
+              fi
+            done
+
+            exit $FAILED
+        env:
+          # AppClaw configuration
+          LLM_PROVIDER: anthropic        # only used if AGENT_MODE=dom is invoked
+          AGENT_MODE: dom
+          PLATFORM: android
+          DEVICE_UDID: emulator-5554
+          APP_PATH: apps/demo.apk
+          MAX_STEPS: 20
+          SHOW_TOKEN_USAGE: 'false'
+
+          # Credentials — injected from GitHub secrets, masked in logs
+          TEST_EMAIL: ${{ secrets.TEST_EMAIL }}
+          TEST_PASSWORD: ${{ secrets.TEST_PASSWORD }}
+        id: run_flows
+        continue-on-error: true         # let the artifact step run on failure
+
+      # 7. Upload AppClaw logs for diagnosis (always, even on failure)
+      - name: Upload AppClaw logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: appclaw-logs
+          path: |
+            appclaw-*.log
+            flows/
+          retention-days: 7
+
+      # 8. Fail the job explicitly if flows failed
+      #    (because continue-on-error suppresses the failure above)
+      - name: Fail if flows failed
+        if: steps.run_flows.outcome == 'failure'
+        run: exit 1
+
+  # Optional: run the AppClaw explorer on a schedule to discover new flows.
+  # Generates YAML flows for any new screens found since the last run.
+  # Remove or disable if you don't want automatic flow discovery.
+  appclaw-explore:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'   # manual trigger only
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install AppClaw CLI
+        run: npm install -g appclaw
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | \
+            sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      # Run the AppClaw explorer to auto-discover flows from the app description.
+      # Output goes to flows/generated/ for human review before promotion to flows/.
+      - name: Explore app and generate flows
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          profile: pixel_6
+          avd-name: explore_avd
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          disable-animations: true
+          script: |
+            appclaw --explore "demo banking app with login, forms, swipe and drag screens" \
+              --num-flows 8 \
+              --output-dir flows/generated
+        env:
+          LLM_PROVIDER: anthropic
+          LLM_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          AGENT_MODE: dom
+          PLATFORM: android
+          DEVICE_UDID: emulator-5554
+          APP_PATH: apps/demo.apk
+
+      # Upload the generated flows as an artifact for human review.
+      # A developer reviews, moves approved flows to flows/, commits, and runs CI.
+      - name: Upload generated flows
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-flows
+          path: flows/generated/
+          retention-days: 14

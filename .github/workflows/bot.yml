@@ -1,0 +1,74 @@
+name: AI Agent Bot
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # nightly at 02:00 UTC
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'Task description for the agent'
+        type: string
+        required: true
+        default: 'Run the smoke test suite and report results'
+      model:
+        description: 'LLM model to use'
+        type: choice
+        options:
+          - anthropic/claude-opus-4-5
+          - anthropic/claude-sonnet-4-5
+          - openai/gpt-4o
+          - google/gemini-2.0-flash-001
+        default: anthropic/claude-sonnet-4-5
+      log_level:
+        description: 'Log level'
+        type: choice
+        options: [info, debug]
+        default: info
+
+jobs:
+  agent:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run AI agent against LambdaTest
+        run: |
+          TASK="${{ github.event.inputs.task || 'Run the nightly smoke test suite and report results' }}"
+          MODEL="${{ github.event.inputs.model || 'anthropic/claude-sonnet-4-5' }}"
+          LOG_LEVEL="${{ github.event.inputs.log_level || 'info' }}"
+
+          if [ "$LOG_LEVEL" = "debug" ]; then
+            pnpm bot:debug -- --task "$TASK" --model "$MODEL"
+          else
+            pnpm bot -- --task "$TASK" --model "$MODEL"
+          fi
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          LT_USERNAME: ${{ secrets.LT_USERNAME }}
+          LT_ACCESS_KEY: ${{ secrets.LT_ACCESS_KEY }}
+          LT_APP_URL: ${{ secrets.LT_APP_URL }}
+
+      - name: Upload agent artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: agent-results-${{ github.run_number }}
+          path: |
+            screen-*.png
+            agent-output.log
+          retention-days: 14

@@ -1,0 +1,70 @@
+name: AppClaw Flows
+
+on:
+  workflow_dispatch:
+    inputs:
+      flow:
+        description: 'Flow file to run (relative to flows/, leave empty to run all)'
+        type: string
+        default: ''
+  push:
+    paths:
+      - 'flows/**'
+
+jobs:
+  appclaw:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run AppClaw flows
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          profile: pixel_6
+          avd-name: appclaw_avd
+          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          disable-animations: true
+          script: |
+            if [ -n "${{ github.event.inputs.flow }}" ]; then
+              pnpm claw:flow -- --file flows/${{ github.event.inputs.flow }}
+            else
+              for flow in flows/*.yaml flows/*.yml; do
+                [ -f "$flow" ] || continue
+                echo "Running flow: $flow"
+                pnpm claw:flow -- --file "$flow"
+              done
+            fi
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+      - name: Upload AppClaw artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: appclaw-results
+          path: |
+            appclaw-results/
+            screen-*.png
+          retention-days: 7

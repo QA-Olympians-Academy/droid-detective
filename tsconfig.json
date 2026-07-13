@@ -1,0 +1,57 @@
+{
+  "compilerOptions": {
+    "ignoreDeprecations": "6.0",
+    "target": "ES2020",
+    "module": "commonjs",
+    "lib": [
+      "ES2020"
+    ],
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "outDir": "./dist",
+    "rootDir": ".",
+    "baseUrl": ".",
+    "paths": {
+      "@pages/*": [
+        "droid/pageobjects/*"
+      ],
+      "@specs/*": [
+        "droid/specs/*"
+      ],
+      "@Ai/Bot/Providers/*": [
+        "bot/ai/providers/*"
+      ],
+      "@Ai/Bot/Agent/*": [
+        "bot/ai/agent/*"
+      ],
+      "@Ai/Bot/Command/*": [
+        "bot/cmd/*"
+      ],
+      "@Ai/Bot/Utils/*": [
+        "bot/utils/*"
+      ]
+    },
+    "typeRoots": [
+      "./node_modules/@types"
+    ],
+    "types": [
+      "node",
+      "mocha"
+    ]
+  },
+  "ts-node": {
+    "require": [
+      "tsconfig-paths/register"
+    ]
+  },
+  "include": [
+    "droid/**/*.ts",
+    "bot/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}

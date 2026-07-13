@@ -1,0 +1,14 @@
+name: Forms — switch toggle
+platform: android
+---
+setup:
+  - open demo app
+  - tap Forms tab
+  - wait until Forms screen is visible
+
+steps:
+  - tap the switch
+  - verify 'Click to turn the switch OFF' is visible
+  - tap the switch
+  - verify 'Click to turn the switch ON' is visible
+  - done: toggle verified

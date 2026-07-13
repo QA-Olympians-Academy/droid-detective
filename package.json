@@ -1,0 +1,47 @@
+{
+  "name": "droid-detective",
+  "version": "1.0.0",
+  "description": "Workshop for Agentic Mobile Test Automation",
+  "scripts": {
+    "test": "wdio run droid/wdio.conf.ts",
+    "test:android": "wdio run droid/wdio.conf.ts --capabilities.0.platformName=Android",
+    "appium": "appium",
+    "appium:install-driver": "appium driver install uiautomator2",
+    "claw": "appclaw",
+    "claw:explore": "appclaw --explore",
+    "claw:play": "appclaw --playground",
+    "claw:flow": "appclaw --flow",
+    "agent:confluence": "ts-node --project scripts/tsconfig.json --transpile-only scripts/confluence-agent.ts",
+    "bot": "ts-node --transpile-only bot/index.ts",
+    "bot:debug": "ts-node --transpile-only bot/index.ts --log-level debug",
+    "slides": "node scripts/generate-slides.js"
+  },
+  "packageManager": "pnpm@10.28.0",
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "appium",
+      "sharp"
+    ]
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^20.0.0",
+    "@wdio/appium-service": "^8.40.0",
+    "@wdio/cli": "^8.40.0",
+    "@wdio/globals": "^8.46.0",
+    "@wdio/local-runner": "^8.40.0",
+    "@wdio/mocha-framework": "^8.40.0",
+    "@wdio/spec-reporter": "^8.40.0",
+    "@wdio/types": "^8.40.0",
+    "appium": "^2.11.0",
+    "appium-uiautomator2-driver": "^3.7.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.0"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.90.0",
+    "appclaw": "^1.1.0",
+    "commander": "^14.0.3",
+    "pptxgenjs": "^3.12.0"
+  }
+}

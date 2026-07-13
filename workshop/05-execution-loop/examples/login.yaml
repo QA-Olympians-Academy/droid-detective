@@ -1,0 +1,18 @@
+name: Login — valid credentials
+platform: android
+env: dev
+---
+setup:
+  - open demo app
+  - wait until Login tab is visible
+
+steps:
+  - tap Login tab
+  - wait until email field is visible
+  - type '${secrets.email}' in email field
+  - type '${secrets.password}' in password field
+  - tap LOGIN button
+
+assertions:
+  - verify 'logged in' is visible
+  - done: login successful

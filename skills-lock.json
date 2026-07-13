@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "skills": {
+    "emil-design-eng": {
+      "source": "AppiumTestDistribution/appclaw",
+      "sourceType": "github",
+      "computedHash": "44c92137798bcc190e195edc6eca50f6c34f2d8bbcd45f0c164553a0f5afc9f2"
+    },
+    "generate-appclaw-flow": {
+      "source": "AppiumTestDistribution/appclaw",
+      "sourceType": "github",
+      "computedHash": "4cf49107aaedc8bea3a3c396e5c9aa74a32bd1508a6eb56e1a9193be603adceb"
+    },
+    "review-changes": {
+      "source": "AppiumTestDistribution/appclaw",
+      "sourceType": "github",
+      "computedHash": "f456738757a9044e85bf119d73d41189d6f7c2b0b4e4ffcebb4c701951049ca9"
+    },
+    "use-appclaw-cli": {
+      "source": "AppiumTestDistribution/appclaw",
+      "sourceType": "github",
+      "computedHash": "0c33df04e2eb841bfb29b06f3ea459933089bc160364d29677ccb760afb6f4c6"
+    }
+  }
+}
