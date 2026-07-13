@@ -215,15 +215,16 @@ Output one FILE/OLD/NEW/REASON block per failing selector, in the format describ
     lastText = response.choices[0]?.message?.content || '';
     const patches = parsePatches(lastText);
     if (patches.length > 0) return patches;
-    console.warn(`Attempt ${attempt}/${MAX_ATTEMPTS}: no parseable FILE/OLD/NEW blocks${attempt < MAX_ATTEMPTS ? ' — retrying' : ''}`);
+    console.warn(`Attempt ${attempt}/${MAX_ATTEMPTS}: no parseable patch in model output${attempt < MAX_ATTEMPTS ? ' — retrying' : ''}`);
   }
   console.warn('Model never returned a parseable patch. Last raw output:\n----\n' + lastText.slice(0, 500) + '\n----');
   return [];
 }
 
-// Parse the model's patches, tolerant of how a small local model actually
-// responds: the preferred plain FILE/OLD/NEW/REASON blocks (possibly wrapped in
-// markdown bold/bullets/fences), and — as a fallback — a JSON array.
+// Parse the model's patches. With response_format json_object the model returns
+// a {"patches":[...]} object (or a bare array) — that's the primary path. A
+// plaintext FILE/OLD/NEW/REASON block parser is kept as a fallback for runs
+// against models/endpoints that don't honor the JSON format constraint.
 function parsePatches(text) {
   const norm = arr => (Array.isArray(arr) ? arr : [])
     .filter(p => p && p.file && p.oldSelector && p.newSelector)

@@ -63,13 +63,9 @@ STRING rules: never use a single quote (') — in XPath use DOUBLE quotes (\`//*
 Example — failing \`~Carousel\`, hierarchy has \`<... resource-id="Carousel">\` and no content-desc="Carousel":
   correct → \`//*[@resource-id="Carousel"]\`  (WRONG: \`//*[@content-desc='Carousel']\`)
 
-OUTPUT FORMAT — for EACH selector to fix, output exactly four lines:
-FILE: <page object filename>
-OLD: <the failing selector, verbatim>
-NEW: <the corrected selector>
-REASON: <short reason>
-Separate multiple fixes with a line containing only: ---
-Output NOTHING else — no JSON, no code fences, no quotes around values. (Plain lines avoid JSON quote-escaping problems that trip up small models.)`;
+OUTPUT FORMAT — return ONLY a JSON object (no prose, no markdown, no code fences), shaped EXACTLY:
+{"patches":[{"file":"<page object filename>","oldSelector":"<the failing selector, verbatim>","newSelector":"<the corrected selector>","reason":"<short reason>"}]}
+One object in the array per failing selector. All JSON strings use double quotes; a double quote INSIDE a selector value (XPath) must be escaped as \\". Emit nothing before or after the JSON object.`;
 
 // Step 1 — parse the log for locators that genuinely failed. Appium logs each
 // lookup as a request line with the selector, then an outcome (200 found / 404
@@ -144,10 +140,16 @@ ${pageObjectsText}
 
 Output one FILE/OLD/NEW/REASON block per failing selector.`;
 
-  // Small local models are non-deterministic about format — retry until parseable.
+  // Small local models drift off a plaintext contract at Ollama's default
+  // temperature (~0.8). Two enforcement layers make the format reliable:
+  //   - temperature 0 on the first try (deterministic); a small bump on retries.
+  //   - response_format json_object: Ollama constrains decoding to valid JSON,
+  //     so the model can't return prose. parsePatches reads the JSON.
   for (let attempt = 1; attempt <= 5; attempt++) {
     const response = await client.chat.completions.create({
       model: MODEL,
+      temperature: attempt === 1 ? 0 : 0.3,
+      response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content: userMsg },
@@ -160,10 +162,28 @@ Output one FILE/OLD/NEW/REASON block per failing selector.`;
   return [];
 }
 
-// Parse the model's patches, tolerant of what a small model actually returns:
-// FILE/OLD/NEW/REASON blocks (optionally wrapped in markdown bold/bullets), or —
-// as a fallback — a JSON array.
+// Parse the model's patches. With response_format json_object the model returns
+// a {"patches":[...]} object (or a bare array) — the primary path. A plaintext
+// FILE/OLD/NEW/REASON block parser is kept as a fallback for endpoints that
+// ignore the JSON format constraint.
 function parsePatches(text) {
+  const norm = arr => (Array.isArray(arr) ? arr : [])
+    .filter(p => p && p.file && p.oldSelector && p.newSelector)
+    .map(p => ({ file: p.file, oldSelector: p.oldSelector, newSelector: p.newSelector, reason: p.reason || 'healed' }));
+
+  // Primary (matches the forced response_format): a {"patches":[...]} object or a
+  // bare array. Try the whole string first, then a bracket substring fallback.
+  for (const candidate of [text, (text.match(/[[{][\s\S]*[\]}]/) || [])[0]]) {
+    if (!candidate) continue;
+    try {
+      const parsed = JSON.parse(candidate.replace(/,(\s*[\]}])/g, '$1'));
+      const out = norm(Array.isArray(parsed) ? parsed : parsed.patches);
+      if (out.length) return out;
+    } catch { /* not JSON on this candidate — try the next */ }
+  }
+
+  // Fallback: plaintext FILE/OLD/NEW/REASON blocks (for endpoints that ignore
+  // the JSON format constraint).
   const strip = s => s.replace(/^[\s>*`'"-]+/, '').replace(/[\s*`'"]+$/, '').trim();
   const patches = [];
   for (const block of text.split(/^\s*-{3,}\s*$/m)) {
@@ -177,19 +197,7 @@ function parsePatches(text) {
     const reason = grab('REASON') || 'healed';
     if (file && oldSelector && newSelector) patches.push({ file, oldSelector, newSelector, reason });
   }
-  if (patches.length) return patches;
-
-  // Fallback: a JSON array (some runs emit JSON despite the instructions).
-  const m = text.match(/\[[\s\S]*\]/);
-  if (m) {
-    try {
-      const arr = JSON.parse(m[0].replace(/,(\s*[\]}])/g, '$1'));
-      return (Array.isArray(arr) ? arr : [])
-        .filter(p => p && p.file && p.oldSelector && p.newSelector)
-        .map(p => ({ file: p.file, oldSelector: p.oldSelector, newSelector: p.newSelector, reason: p.reason || 'healed' }));
-    } catch { /* unparseable JSON — give up */ }
-  }
-  return [];
+  return patches;
 }
 
 // Reject selectors whose target isn't actually present in the captured DOM —
