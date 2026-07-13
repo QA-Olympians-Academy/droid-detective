@@ -60,7 +60,7 @@ jobs:
           curl -fsSL https://ollama.com/install.sh | sh
           ollama serve &
           sleep 5
-          ollama pull llama3.2:3b
+          ollama pull llama3.1
 
       - name: Run Android tests (heal on failure)
         uses: reactivecircus/android-emulator-runner@v2
@@ -77,7 +77,7 @@ jobs:
           script: pnpm test || node .github/scripts/heal-and-retry.js
         env:
           LLM_BASE_URL: http://localhost:11434/v1
-          LLM_MODEL: llama3.2:3b
+          LLM_MODEL: llama3.1
           # Skip example.spec.ts in CI (applies to the initial run and the heal retry).
           WDIO_EXCLUDE: specs/example.spec.ts
         continue-on-error: true
@@ -100,7 +100,7 @@ jobs:
         run: node .github/scripts/analyse-failures.js
         env:
           LLM_BASE_URL: http://localhost:11434/v1
-          LLM_MODEL: llama3.2:3b
+          LLM_MODEL: llama3.1
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
 
@@ -140,13 +140,13 @@ jobs:
           curl -fsSL https://ollama.com/install.sh | sh
           ollama serve &
           sleep 5
-          ollama pull llama3.2:3b
+          ollama pull llama3.1
 
       - name: Review changed locators
         run: node .github/scripts/review-locators.js
         env:
           LLM_BASE_URL: http://localhost:11434/v1
-          LLM_MODEL: llama3.2:3b
+          LLM_MODEL: llama3.1
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
