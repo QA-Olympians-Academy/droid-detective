@@ -268,9 +268,7 @@ Cache the pnpm store using the lock file as the key:
 And the pnpm action must be declared **before** `setup-node`:
 
 ```yaml
-- uses: pnpm/action-setup@v4
-  with:
-    version: 10
+- uses: pnpm/action-setup@v4    # version read from package.json "packageManager"
 - uses: actions/setup-node@v4   # ← after pnpm/action-setup
   with:
     node-version: '20'
