@@ -56,6 +56,8 @@ A failing \`~X\` means accessibility id X (content-desc="X"). Fix it by finding 
 
 CRITICAL: if \`~X\` has no matching content-desc but a node has resource-id="X", the label moved to resource-id — use \`//*[@resource-id="X"]\`. Never invent a content-desc that isn't in the hierarchy.
 
+COPY ATTRIBUTE VALUES VERBATIM from the hierarchy — no package prefix (do NOT turn resource-id="Carousel" into "com.app:id/carousel"), no case changes. If a value doesn't appear literally in the XML, you're guessing — don't.
+
 STRING rules: never use a single quote (') — in XPath use DOUBLE quotes (\`//*[@resource-id="Carousel"]\`); one line, no backticks.
 
 Example — failing \`~Carousel\`, hierarchy has \`<... resource-id="Carousel">\` and no content-desc="Carousel":
@@ -173,11 +175,24 @@ function parsePatches(text) {
   return patches;
 }
 
+// Reject selectors whose target isn't actually present in the captured DOM —
+// catches HALLUCINATED values (e.g. a made-up "com.app:id/carousel" when the
+// real resource-id is just "Carousel").
+function selectorTargetInDom(selector, dom) {
+  if (!dom) return true;
+  const acc = selector.match(/^~(.+)$/);
+  if (acc) return dom.includes(`content-desc="${acc[1]}"`);
+  const attrs = [...selector.matchAll(/@([\w-]+)\s*(?:=|,)\s*["']([^"']+)["']/g)];
+  if (attrs.length) return attrs.every(([, attr, val]) => dom.includes(`${attr}="${val}"`));
+  return true;
+}
+
 // Step 4 — validate, then apply. A patch is rejected (never written) if the file
 // or selector is missing, the selector wasn't one that actually failed, the new
-// selector is malformed, or the result no longer parses — so a bad model
-// suggestion can't corrupt a page object or break the build.
-function applyPatches(patches, pageObjectsDir, failingSelectors) {
+// selector is malformed, the result no longer parses, or it targets an element
+// not in the captured DOM — so a bad or hallucinated suggestion can't corrupt a
+// page object or apply a wrong selector.
+function applyPatches(patches, pageObjectsDir, failingSelectors, dom) {
   let count = 0;
   for (const { file, oldSelector, newSelector, reason } of patches) {
     const label = `${file}: "${oldSelector}" → "${newSelector}"`;
@@ -188,6 +203,7 @@ function applyPatches(patches, pageObjectsDir, failingSelectors) {
     const content = fs.readFileSync(filePath, 'utf8');
     if (!content.includes(oldSelector)) { console.warn(`✗ skip (selector not in file): ${label}`); continue; }
     if (!isSafeSelector(newSelector)) { console.warn(`✗ reject (malformed selector): ${label}`); continue; }
+    if (!selectorTargetInDom(newSelector, dom)) { console.warn(`✗ reject (target not in captured DOM — likely hallucinated): ${label}`); continue; }
     const updated = content.replaceAll(oldSelector, newSelector);
     if (!keepsParsing(updated)) { console.warn(`✗ reject (breaks compilation): ${label}`); continue; }
 
@@ -223,7 +239,7 @@ async function main() {
     process.exit(1);
   }
 
-  const applied = applyPatches(patches, pageObjectsDir, failingSelectors);
+  const applied = applyPatches(patches, pageObjectsDir, failingSelectors, hierarchy);
   if (!applied) {
     console.log('No valid patches to apply');
     process.exit(1);

@@ -8,7 +8,9 @@
  */
 
 const fs = require('fs');
-const { execSync } = require('child_process');
+const os = require('os');
+const path = require('path');
+const { execFileSync } = require('child_process');
 const { OpenAI } = require('openai');
 
 // Ollama exposes an OpenAI-compatible endpoint; no real key is needed.
@@ -60,6 +62,9 @@ function extractFailedSelectors(log) {
 
   return [...failed.entries()]
     .filter(([key]) => !succeeded.has(key))
+    // Drop W3C element handles (e.g. element-6066-11e4-…) — they're runtime
+    // references, not selectors.
+    .filter(([, p]) => !/^element-[0-9a-f-]+$/i.test(p.value))
     .map(([, p]) => toWdioSelector(p.strategy, p.value));
 }
 
@@ -98,13 +103,22 @@ function openGitHubIssue(selectors, body) {
     return;
   }
 
-  const title = `[CI] Broken selectors: ${selectors.join(', ').slice(0, 80)}`;
-  const escaped = body.replace(/'/g, "'\\''");
-
-  execSync(
-    `gh issue create --repo "${REPO}" --title "${title}" --body '${escaped}'`,
-    { stdio: 'inherit', env: { ...process.env } },
-  );
+  const title = `[CI] Broken selectors: ${selectors.join(', ')}`.slice(0, 120);
+  // Pass args directly (no shell) and the body via a file, so quotes/backticks/
+  // newlines/URLs in the model output can't break the command.
+  const bodyFile = path.join(os.tmpdir(), `heal-issue-${process.pid}.md`);
+  fs.writeFileSync(bodyFile, body);
+  try {
+    execFileSync('gh', ['issue', 'create', '--repo', REPO, '--title', title, '--body-file', bodyFile], {
+      stdio: 'inherit',
+    });
+  } catch (err) {
+    // Issue creation is best-effort — never fail the workflow because we couldn't
+    // open an issue (e.g. issues disabled, or a read-only token on a fork PR).
+    console.warn(`⚠️  Could not open GitHub issue (${err.message.split('\n')[0]}). Analysis:\n${body}`);
+  } finally {
+    try { fs.unlinkSync(bodyFile); } catch { /* ignore */ }
+  }
 }
 
 async function main() {
