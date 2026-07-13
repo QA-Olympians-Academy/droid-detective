@@ -110,7 +110,9 @@ function getFailureDoms() {
   const files = fs.readdirSync(dir).filter(f => f.endsWith('.xml'));
   if (!files.length) return null;
   return files
-    .map(f => `### Failing screen: ${f}\n${fs.readFileSync(path.join(dir, f), 'utf8').slice(0, 6000)}`)
+    // Full content — the DOM guard must see every element (the target can sit
+    // deep in the tree, past any small cutoff).
+    .map(f => `### Failing screen: ${f}\n${fs.readFileSync(path.join(dir, f), 'utf8')}`)
     .join('\n\n');
 }
 function getLiveHierarchy() {
@@ -143,7 +145,7 @@ ${pageObjectsText}
 Output one FILE/OLD/NEW/REASON block per failing selector.`;
 
   // Small local models are non-deterministic about format — retry until parseable.
-  for (let attempt = 1; attempt <= 3; attempt++) {
+  for (let attempt = 1; attempt <= 5; attempt++) {
     const response = await client.chat.completions.create({
       model: MODEL,
       messages: [
@@ -153,26 +155,41 @@ Output one FILE/OLD/NEW/REASON block per failing selector.`;
     });
     const patches = parsePatches(response.choices[0]?.message?.content || '');
     if (patches.length) return patches;
-    console.warn(`Attempt ${attempt}/3: no parseable FILE/OLD/NEW blocks${attempt < 3 ? ' — retrying' : ''}`);
+    console.warn(`Attempt ${attempt}/5: no parseable patch${attempt < 5 ? ' — retrying' : ''}`);
   }
   return [];
 }
 
-// Parse the model's plain FILE/OLD/NEW/REASON blocks (separated by `---`). No
-// quotes of its own, so double-quoted XPath selectors survive intact — unlike
-// JSON, which small models fail to escape.
+// Parse the model's patches, tolerant of what a small model actually returns:
+// FILE/OLD/NEW/REASON blocks (optionally wrapped in markdown bold/bullets), or —
+// as a fallback — a JSON array.
 function parsePatches(text) {
-  const strip = s => s.replace(/^\s*[`'"]+|[`'"]+\s*$/g, '').trim();
+  const strip = s => s.replace(/^[\s>*`'"-]+/, '').replace(/[\s*`'"]+$/, '').trim();
   const patches = [];
   for (const block of text.split(/^\s*-{3,}\s*$/m)) {
-    const grab = re => { const m = block.match(re); return m ? strip(m[1]) : ''; };
-    const file = grab(/^\s*FILE:\s*(.+)$/m);
-    const oldSelector = grab(/^\s*OLD:\s*(.+)$/m);
-    const newSelector = grab(/^\s*NEW:\s*(.+)$/m);
-    const reason = grab(/^\s*REASON:\s*(.+)$/m) || 'healed';
+    const grab = label => {
+      const m = block.match(new RegExp(`^[\\s>*\`#-]*${label}:\\**\\s*(.+)$`, 'mi'));
+      return m ? strip(m[1]) : '';
+    };
+    const file = grab('FILE');
+    const oldSelector = grab('OLD');
+    const newSelector = grab('NEW');
+    const reason = grab('REASON') || 'healed';
     if (file && oldSelector && newSelector) patches.push({ file, oldSelector, newSelector, reason });
   }
-  return patches;
+  if (patches.length) return patches;
+
+  // Fallback: a JSON array (some runs emit JSON despite the instructions).
+  const m = text.match(/\[[\s\S]*\]/);
+  if (m) {
+    try {
+      const arr = JSON.parse(m[0].replace(/,(\s*[\]}])/g, '$1'));
+      return (Array.isArray(arr) ? arr : [])
+        .filter(p => p && p.file && p.oldSelector && p.newSelector)
+        .map(p => ({ file: p.file, oldSelector: p.oldSelector, newSelector: p.newSelector, reason: p.reason || 'healed' }));
+    } catch { /* unparseable JSON — give up */ }
+  }
+  return [];
 }
 
 // Reject selectors whose target isn't actually present in the captured DOM —
