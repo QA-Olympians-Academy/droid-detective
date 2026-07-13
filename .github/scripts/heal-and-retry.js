@@ -141,6 +141,30 @@ function readPageObjects() {
   return contents;
 }
 
+const HEAL_SYSTEM_PROMPT = `You are an expert mobile test automation engineer. You repair broken WebdriverIO + Appium (Android/UiAutomator2) selectors by reading the live UI hierarchy and returning corrected selectors.
+
+The UI hierarchy is Android XML. Each node may carry:
+- content-desc="X"  → the element's ACCESSIBILITY ID; the WDIO selector is \`~X\`
+- resource-id="X"   → the WDIO selector is \`//*[@resource-id="X"]\`
+- text="X"          → the WDIO selector is \`//*[@text="X"]\`
+
+A failing selector \`~X\` means "accessibility id X" (content-desc="X"). To fix it, find the element the test intended in the hierarchy and choose a new selector using this PRIORITY:
+  1. a node with content-desc="Y"      → \`~Y\`
+  2. else a node with resource-id="Y"  → \`//*[@resource-id="Y"]\`
+  3. else a node with text="Y"         → \`//*[@text="Y"]\`
+  4. else a minimal class-based XPath.
+
+CRITICAL: if the failing \`~X\` has NO matching content-desc in the hierarchy but a node has resource-id="X" (or a clearly corresponding id), the label moved from content-desc to resource-id — use \`//*[@resource-id="X"]\`. NEVER invent a content-desc that is not present in the hierarchy.
+
+Selector STRING rules (the value goes inside \`$('...')\`, a single-quoted JS string):
+- NEVER use a single quote (') in the selector. In XPath, wrap values in DOUBLE quotes: \`//*[@resource-id="Carousel"]\`.
+- One line only: no newlines, backticks, or leading/trailing spaces.
+
+Worked example — failing \`~Carousel\`; the hierarchy contains \`<android.view.ViewGroup resource-id="Carousel" ...>\` and no content-desc="Carousel":
+  correct → newSelector = \`//*[@resource-id="Carousel"]\`   (WRONG: \`//*[@content-desc='Carousel']\`)
+
+Return ONLY a JSON array of objects { "file", "oldSelector", "newSelector", "reason" } — no prose outside the array.`;
+
 async function askModelToHeal(failures, uiHierarchy, pageObjects) {
   const pageObjectsText = Object.entries(pageObjects)
     .map(([name, content]) => `### ${name}\n\`\`\`typescript\n${content}\n\`\`\``)
@@ -150,7 +174,7 @@ async function askModelToHeal(failures, uiHierarchy, pageObjects) {
     ? `\n\n## Current UI Hierarchy (ADB dump)\n\`\`\`xml\n${uiHierarchy.slice(0, 8000)}\n\`\`\``
     : '';
 
-  const prompt = `You are a mobile test automation engineer. The following selectors have failed in a WebdriverIO + Appium test run.
+  const prompt = `Fix these failing selectors from a WebdriverIO + Appium test run.
 
 ## Failing selectors / errors
 ${failures.map(f => `- ${f.error}\n  ${f.selector}`).join('\n')}
@@ -159,27 +183,14 @@ ${hierarchySection}
 ## Page Object files
 ${pageObjectsText}
 
-For each failing selector, suggest the corrected selector based on the UI hierarchy (if available) or your best judgement.
-
-Selector format rules (the value is inserted into a WebdriverIO \`$('...')\` call, so it MUST be a valid single-quoted string):
-- STRONGLY prefer an accessibility id written as \`~name\` (e.g. \`~Carousel-screen\`) — this is the most robust and always safe.
-- NEVER put a single quote (') in the selector — it would break the string literal. If you use XPath, wrap attribute values in DOUBLE quotes, e.g. \`//*[@content-desc="Carousel"]\`.
-- No newlines, backticks, or leading/trailing spaces. The selector must be one line.
-
-Return ONLY a JSON array like:
-[
-  {
-    "file": "login.page.ts",
-    "oldSelector": "~username_input",
-    "newSelector": "~com.saucelabs.mydemoapp.android:id/nameET",
-    "reason": "resource-id found in hierarchy dump"
-  }
-]
-Do not include any prose outside the JSON array.`;
+Return the JSON array of patches (one entry per failing selector).`;
 
   const response = await client.chat.completions.create({
     model: MODEL,
-    messages: [{ role: 'user', content: prompt }],
+    messages: [
+      { role: 'system', content: HEAL_SYSTEM_PROMPT },
+      { role: 'user', content: prompt },
+    ],
   });
 
   const text = response.choices[0]?.message?.content || '';
