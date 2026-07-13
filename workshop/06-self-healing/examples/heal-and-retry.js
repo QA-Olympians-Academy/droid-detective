@@ -141,15 +141,42 @@ ${pageObjectsText}
 Output one FILE/OLD/NEW/REASON block per failing selector.`;
 
   // Small local models drift off a plaintext contract at Ollama's default
-  // temperature (~0.8). Two enforcement layers make the format reliable:
+  // temperature (~0.8). Three enforcement layers make the output reliable:
   //   - temperature 0 on the first try (deterministic); a small bump on retries.
-  //   - response_format json_object: Ollama constrains decoding to valid JSON,
-  //     so the model can't return prose. parsePatches reads the JSON.
+  //   - response_format json_schema: Ollama constrains decoding to the exact
+  //     PATCH_SCHEMA shape. (Plain json_object only guarantees VALID json — the
+  //     model still invented its own keys; a schema forces the structure too.)
+  //   - max_tokens: the patch JSON is tiny; capping output keeps CPU runs fast.
+  const PATCH_SCHEMA = {
+    type: 'object',
+    properties: {
+      patches: {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            file: { type: 'string' },
+            oldSelector: { type: 'string' },
+            newSelector: { type: 'string' },
+            reason: { type: 'string' },
+          },
+          required: ['file', 'oldSelector', 'newSelector', 'reason'],
+          additionalProperties: false,
+        },
+      },
+    },
+    required: ['patches'],
+    additionalProperties: false,
+  };
   for (let attempt = 1; attempt <= 5; attempt++) {
     const response = await client.chat.completions.create({
       model: MODEL,
       temperature: attempt === 1 ? 0 : 0.3,
-      response_format: { type: 'json_object' },
+      max_tokens: 800,
+      response_format: {
+        type: 'json_schema',
+        json_schema: { name: 'selector_patches', strict: true, schema: PATCH_SCHEMA },
+      },
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         { role: 'user', content: userMsg },
@@ -162,7 +189,7 @@ Output one FILE/OLD/NEW/REASON block per failing selector.`;
   return [];
 }
 
-// Parse the model's patches. With response_format json_object the model returns
+// Parse the model's patches. With response_format json_schema the model returns
 // a {"patches":[...]} object (or a bare array) — the primary path. A plaintext
 // FILE/OLD/NEW/REASON block parser is kept as a fallback for endpoints that
 // ignore the JSON format constraint.
