@@ -80,6 +80,12 @@ jobs:
       # 8b. Install a local LLM (Ollama + llama3.1) for the AI steps below.
       #     No cloud key needed — models run locally. On CI they run on CPU
       #     (no GPU), so inference is slow.
+      - name: Cache Ollama model
+        uses: actions/cache@v4
+        with:
+          path: ~/.ollama/models
+          key: ollama-llama3.1
+
       - name: Install Ollama and pull model
         run: |
           curl -fsSL https://ollama.com/install.sh | sh
@@ -135,6 +141,12 @@ jobs:
       # Install a local LLM (Ollama + llama3.1) for the review script.
       # No cloud key needed — models run locally. On CI they run on CPU
       # (no GPU), so inference is slow.
+      - name: Cache Ollama model
+        uses: actions/cache@v4
+        with:
+          path: ~/.ollama/models
+          key: ollama-llama3.1
+
       - name: Install Ollama and pull model
         run: |
           curl -fsSL https://ollama.com/install.sh | sh

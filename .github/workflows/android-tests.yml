@@ -70,6 +70,12 @@ jobs:
           retention-days: 7
 
       # Local models run on CPU in CI (no GPU), so inference is slow.
+      - name: Cache Ollama model
+        uses: actions/cache@v4
+        with:
+          path: ~/.ollama/models
+          key: ollama-llama3.1
+
       - name: Install Ollama and pull model
         run: |
           curl -fsSL https://ollama.com/install.sh | sh
@@ -120,6 +126,12 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       # Local models run on CPU in CI (no GPU), so inference is slow.
+      - name: Cache Ollama model
+        uses: actions/cache@v4
+        with:
+          path: ~/.ollama/models
+          key: ollama-llama3.1
+
       - name: Install Ollama and pull model
         run: |
           curl -fsSL https://ollama.com/install.sh | sh

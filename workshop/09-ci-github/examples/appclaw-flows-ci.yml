@@ -143,6 +143,12 @@ jobs:
 
       # Local model server for the explorer — no cloud LLM key needed.
       # Runs on CPU in CI, so exploration is slower than on a GPU.
+      - name: Cache Ollama model
+        uses: actions/cache@v4
+        with:
+          path: ~/.ollama/models
+          key: ollama-llama3.1
+
       - name: Install Ollama and pull model
         run: |
           curl -fsSL https://ollama.com/install.sh | sh

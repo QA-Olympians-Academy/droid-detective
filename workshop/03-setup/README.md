@@ -19,6 +19,27 @@
 
 ---
 
+## Precondition — Download the demo app
+
+The workshop drives the **WebdriverIO native demo app**. Its APK is not committed
+(`apps/*.apk` is git-ignored), so download it once after the checks above and save
+it as `apps/demo.apk` (the path `APP_PATH` / `wdio.conf.ts` expect):
+
+```bash
+# latest Android release of webdriverio/native-demo-app
+curl -L -o apps/demo.apk \
+  "$(curl -s https://api.github.com/repos/webdriverio/native-demo-app/releases/latest \
+     | grep -o 'https://[^"]*\.apk')"
+
+# verify it is a complete APK
+unzip -l apps/demo.apk >/dev/null && echo "✓ apps/demo.apk ready"
+```
+
+Package id: `com.wdiodemoapp` (Home / Webview / Login / Forms / Swipe / Drag screens).
+The emulator installs it automatically on the first `pnpm test` / AppClaw run.
+
+---
+
 ## Step 1 — Environment variables
 
 ```bash
