@@ -172,13 +172,40 @@ OUTPUT FORMAT — return ONLY a JSON object (no prose, no markdown, no code fenc
 {"patches":[{"file":"<page object filename, e.g. swipe.page.ts>","oldSelector":"<the failing selector, copied verbatim, e.g. ~Carousel>","newSelector":"<the corrected selector, e.g. //*[@resource-id=\\"Carousel\\"]>","reason":"<short reason>"}]}
 One object in the array per failing selector. All JSON strings use double quotes; a double quote INSIDE a selector value (XPath) must be escaped as \\". Emit nothing before or after the JSON object.`;
 
+// A STRICT JSON schema constrains the model's output SHAPE, not just "valid
+// JSON". With plain json_object, llama3.1 on CI returned valid-but-wrong JSON
+// ({"selector":"~Drag","old":{"elements":[…]}}) that carried no patch — json
+// mode forces syntax, not structure. json_schema forces both, so every response
+// is a {"patches":[…]} object the parser can read.
+const PATCH_SCHEMA = {
+  type: 'object',
+  properties: {
+    patches: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          file: { type: 'string' },
+          oldSelector: { type: 'string' },
+          newSelector: { type: 'string' },
+          reason: { type: 'string' },
+        },
+        required: ['file', 'oldSelector', 'newSelector', 'reason'],
+        additionalProperties: false,
+      },
+    },
+  },
+  required: ['patches'],
+  additionalProperties: false,
+};
+
 async function askModelToHeal(failures, uiHierarchy, pageObjects) {
   const pageObjectsText = Object.entries(pageObjects)
     .map(([name, content]) => `### ${name}\n\`\`\`typescript\n${content}\n\`\`\``)
     .join('\n\n');
 
   const hierarchySection = uiHierarchy
-    ? `\n\n## Current UI Hierarchy (ADB dump)\n\`\`\`xml\n${uiHierarchy.slice(0, 24000)}\n\`\`\``
+    ? `\n\n## Current UI Hierarchy (ADB dump)\n\`\`\`xml\n${uiHierarchy.slice(0, 18000)}\n\`\`\``
     : '';
 
   const prompt = `Fix these failing selectors from a WebdriverIO + Appium test run.
@@ -199,14 +226,18 @@ Output one FILE/OLD/NEW/REASON block per failing selector, in the format describ
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     const response = await client.chat.completions.create({
       model: MODEL,
-      // A small local model at Ollama's default temperature (~0.8) drifts off any
-      // plaintext contract — that's why it returned prose. Two enforcement layers:
-      //   - temperature 0 on the first try (deterministic, best instruction-
-      //     following); a small bump on retries so a re-ask can actually vary.
-      //   - response_format json_object: Ollama constrains decoding to valid JSON,
-      //     so the model physically cannot emit prose. parsePatches reads the JSON.
+      // Reliability + speed on a small CPU-bound model:
+      //   - temperature 0 first try (deterministic); a small bump on retries.
+      //   - response_format json_schema: Ollama constrains decoding to the exact
+      //     PATCH_SCHEMA shape, so the model can't emit prose OR wrong-keyed JSON.
+      //   - max_tokens: the patch JSON is tiny; capping output stops the model
+      //     rambling for minutes on CPU (each token is a slow CPU step in CI).
       temperature: attempt === 1 ? 0 : 0.3,
-      response_format: { type: 'json_object' },
+      max_tokens: 800,
+      response_format: {
+        type: 'json_schema',
+        json_schema: { name: 'selector_patches', strict: true, schema: PATCH_SCHEMA },
+      },
       messages: [
         { role: 'system', content: HEAL_SYSTEM_PROMPT },
         { role: 'user', content: prompt },

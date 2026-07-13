@@ -97,6 +97,20 @@ Focus only on the broken selectors. Use clear headings. Keep it under 300 words.
   return response.choices[0]?.message?.content || 'No analysis available';
 }
 
+// Static issue body used when the model is unreachable (e.g. Ollama died/OOM'd
+// on the runner by the time this reporting step runs). Analysis is best-effort —
+// a model hiccup must never fail the CI job or lose the failure record.
+function fallbackBody(selectors) {
+  return `## Summary
+A CI run failed because the selector(s) below could not be found on screen (renamed, removed, or the screen changed). Automated model analysis was unavailable for this run.
+
+## Broken selectors
+${selectors.map(s => `- \`${s}\``).join('\n')}
+
+## Suggested fix
+Re-crawl the failing screen (inspect the UI hierarchy / DOM snapshot in the run artifacts) and update the matching page-object selectors to the current attributes.`;
+}
+
 function openGitHubIssue(selectors, body) {
   if (!REPO) {
     console.log('GITHUB_REPOSITORY not set — printing issue body instead:\n', body);
@@ -137,13 +151,22 @@ async function main() {
   console.log(`Found ${selectors.length} broken selector(s): ${selectors.join(', ')}`);
 
   const logTail = fullLog.length > 15000 ? '...[truncated]\n' + fullLog.slice(-15000) : fullLog;
-  const analysis = await analyseWithModel(selectors, logTail);
+  let analysis;
+  try {
+    analysis = await analyseWithModel(selectors, logTail);
+  } catch (err) {
+    // Model unreachable/erroring — don't lose the failure record, fall back.
+    console.warn(`⚠️  Model analysis failed (${err.message.split('\n')[0]}) — using a basic issue body.`);
+    analysis = fallbackBody(selectors);
+  }
   console.log('Analysis:\n', analysis);
   openGitHubIssue(selectors, analysis);
   console.log('Done');
 }
 
 main().catch(err => {
-  console.error('analyse-failures error:', err);
-  process.exit(1);
+  // Analysis/reporting is best-effort: the real pass/fail is decided by the
+  // dedicated "Fail job if tests failed" step. Never fail CI from this reporter.
+  console.error('analyse-failures error (non-fatal):', err);
+  process.exit(0);
 });
