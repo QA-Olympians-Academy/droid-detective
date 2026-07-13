@@ -23,18 +23,43 @@ const client = new OpenAI({
 });
 const MODEL = process.env.LLM_MODEL || 'llama3.1';
 
-// Step 1 — parse the log
+// Step 1 — parse the log for locators that genuinely failed.
+// Appium logs each lookup as a request line carrying the selector, then an
+// outcome line (200 = found, 404 = not found), e.g.:
+//   --> POST /session/<sid>/element {"using":"accessibility id","value":"Carousel"}
+//   <-- POST /session/<sid>/element 404
+// A selector is a real failure only if it NEVER succeeded — this skips the
+// transient 404s emitted while waitForDisplayed polls for an element that then
+// appears. Requests pair to responses by session id (spec workers interleave).
 function extractFailedSelectors(logPath) {
   const log = fs.readFileSync(logPath, 'utf8');
-  const failures = [];
+  const reqRe = /--> POST \/session\/([^/]+)\/element\s+\{"using":"([^"]+)","value":"((?:[^"\\]|\\.)*)"\}/;
+  const resRe = /<-- POST \/session\/([^/]+)\/element (\d+)/;
+  const pending = {};
+  const succeeded = new Set();
+  const failed = new Map();
 
   for (const line of log.split('\n')) {
-    if (line.includes('NoSuchElementError') || line.includes('TimeoutError')) {
-      failures.push(line.trim());
+    const rq = line.match(reqRe);
+    if (rq) {
+      pending[rq[1]] = { strategy: rq[2], value: rq[3].replace(/\\"/g, '"') };
+      continue;
+    }
+    const rs = line.match(resRe);
+    if (rs && pending[rs[1]]) {
+      const p = pending[rs[1]];
+      const key = `${p.strategy}|${p.value}`;
+      if (rs[2] === '200') succeeded.add(key);
+      else failed.set(key, p);
+      delete pending[rs[1]];
     }
   }
 
-  return failures;
+  // Map (strategy, value) back to the page-object selector form: `~Foo` for
+  // accessibility ids, everything else verbatim.
+  return [...failed.entries()]
+    .filter(([key]) => !succeeded.has(key))
+    .map(([, p]) => (p.strategy === 'accessibility id' ? '~' + p.value : p.value));
 }
 
 // Step 2 — get the current hierarchy via ADB

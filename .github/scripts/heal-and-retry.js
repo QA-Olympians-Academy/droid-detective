@@ -31,21 +31,51 @@ function readLog() {
   return fs.readFileSync(LOG_FILE, 'utf8');
 }
 
-function extractFailures(log) {
-  const lines = log.split('\n');
-  const failures = [];
-  let currentError = null;
+// Map a UiAutomator2 (strategy, value) pair to the WDIO selector form used in
+// the page objects, so proposed patches match the source (`$('~Foo')` etc.).
+function toWdioSelector(strategy, value) {
+  if (strategy === 'accessibility id') return '~' + value;
+  return value; // xpath / id (resource-id) / -android uiautomator are used verbatim
+}
 
-  for (const line of lines) {
-    if (line.includes('Error:') || line.includes('NoSuchElementError') || line.includes('TimeoutError')) {
-      currentError = line;
-    } else if (currentError && line.includes('selector:')) {
-      failures.push({ error: currentError, selector: line.trim() });
-      currentError = null;
+// Parse appium.log for locators that genuinely failed. Appium logs each element
+// lookup as a request line carrying the selector, then an outcome line:
+//   --> POST /session/<sid>/element {"using":"accessibility id","value":"Carousel"}
+//   <-- POST /session/<sid>/element 404        (200 = found, 404 = not found)
+// A selector is only a real failure if it NEVER succeeded — this filters out the
+// transient 404s that happen while `waitForDisplayed` polls for an element that
+// then appears. Requests are paired to responses by session id (spec workers
+// interleave in one log).
+function extractFailures(log) {
+  const reqRe = /--> POST \/session\/([^/]+)\/element\s+\{"using":"([^"]+)","value":"((?:[^"\\]|\\.)*)"\}/;
+  const resRe = /<-- POST \/session\/([^/]+)\/element (\d+)/;
+  const pending = {};
+  const succeeded = new Set();
+  const failed = new Map();
+
+  for (const line of log.split('\n')) {
+    const rq = line.match(reqRe);
+    if (rq) {
+      pending[rq[1]] = { strategy: rq[2], value: rq[3].replace(/\\"/g, '"') };
+      continue;
+    }
+    const rs = line.match(resRe);
+    if (rs) {
+      const p = pending[rs[1]];
+      if (!p) continue;
+      const key = `${p.strategy}|${p.value}`;
+      if (rs[2] === '200') succeeded.add(key);
+      else failed.set(key, p);
+      delete pending[rs[1]];
     }
   }
 
-  return failures;
+  return [...failed.entries()]
+    .filter(([key]) => !succeeded.has(key))
+    .map(([, p]) => ({
+      error: `NoSuchElementError: ${toWdioSelector(p.strategy, p.value)} (${p.strategy})`,
+      selector: toWdioSelector(p.strategy, p.value),
+    }));
 }
 
 function getUiHierarchy() {
