@@ -61,7 +61,13 @@ STRING rules: never use a single quote (') — in XPath use DOUBLE quotes (\`//*
 Example — failing \`~Carousel\`, hierarchy has \`<... resource-id="Carousel">\` and no content-desc="Carousel":
   correct → \`//*[@resource-id="Carousel"]\`  (WRONG: \`//*[@content-desc='Carousel']\`)
 
-Return ONLY a JSON array of { "file", "oldSelector", "newSelector", "reason" } — no prose.`;
+OUTPUT FORMAT — for EACH selector to fix, output exactly four lines:
+FILE: <page object filename>
+OLD: <the failing selector, verbatim>
+NEW: <the corrected selector>
+REASON: <short reason>
+Separate multiple fixes with a line containing only: ---
+Output NOTHING else — no JSON, no code fences, no quotes around values. (Plain lines avoid JSON quote-escaping problems that trip up small models.)`;
 
 // Step 1 — parse the log for locators that genuinely failed. Appium logs each
 // lookup as a request line with the selector, then an outcome (200 found / 404
@@ -122,11 +128,7 @@ async function getPatches(failures, hierarchy, pageObjectsDir) {
     .map(f => `### ${f}\n\`\`\`typescript\n${fs.readFileSync(path.join(pageObjectsDir, f), 'utf8')}\n\`\`\``)
     .join('\n\n');
 
-  const response = await client.chat.completions.create({
-    model: MODEL,
-    messages: [
-      { role: 'system', content: SYSTEM_PROMPT },
-      { role: 'user', content: `Fix these failing selectors.
+  const userMsg = `Fix these failing selectors.
 
 Failing selectors:
 ${failures.join('\n')}
@@ -136,16 +138,39 @@ ${hierarchy ? `UI hierarchy of the failing screen(s):\n\`\`\`xml\n${hierarchy}\n
 Page objects:
 ${pageObjectsText}
 
-Return the JSON array of patches.` },
-    ],
-  });
+Output one FILE/OLD/NEW/REASON block per failing selector.`;
 
-  const text = response.choices[0]?.message?.content || '';
-  const match = text.match(/\[[\s\S]*\]/);
-  if (!match) return [];
-  // Local models often emit trailing commas — strip before parsing.
-  try { return JSON.parse(match[0].replace(/,(\s*[\]}])/g, '$1')); }
-  catch { return []; }
+  // Small local models are non-deterministic about format — retry until parseable.
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    const response = await client.chat.completions.create({
+      model: MODEL,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: userMsg },
+      ],
+    });
+    const patches = parsePatches(response.choices[0]?.message?.content || '');
+    if (patches.length) return patches;
+    console.warn(`Attempt ${attempt}/3: no parseable FILE/OLD/NEW blocks${attempt < 3 ? ' — retrying' : ''}`);
+  }
+  return [];
+}
+
+// Parse the model's plain FILE/OLD/NEW/REASON blocks (separated by `---`). No
+// quotes of its own, so double-quoted XPath selectors survive intact — unlike
+// JSON, which small models fail to escape.
+function parsePatches(text) {
+  const strip = s => s.replace(/^\s*[`'"]+|[`'"]+\s*$/g, '').trim();
+  const patches = [];
+  for (const block of text.split(/^\s*-{3,}\s*$/m)) {
+    const grab = re => { const m = block.match(re); return m ? strip(m[1]) : ''; };
+    const file = grab(/^\s*FILE:\s*(.+)$/m);
+    const oldSelector = grab(/^\s*OLD:\s*(.+)$/m);
+    const newSelector = grab(/^\s*NEW:\s*(.+)$/m);
+    const reason = grab(/^\s*REASON:\s*(.+)$/m) || 'healed';
+    if (file && oldSelector && newSelector) patches.push({ file, oldSelector, newSelector, reason });
+  }
+  return patches;
 }
 
 // Step 4 — validate, then apply. A patch is rejected (never written) if the file
