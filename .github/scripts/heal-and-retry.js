@@ -168,13 +168,9 @@ Selector STRING rules (the value goes inside \`$('...')\`, a single-quoted JS st
 Worked example — failing \`~Carousel\`; the hierarchy contains \`<android.view.ViewGroup resource-id="Carousel" ...>\` and no content-desc="Carousel":
   correct → newSelector = \`//*[@resource-id="Carousel"]\`   (WRONG: \`//*[@content-desc='Carousel']\`)
 
-OUTPUT FORMAT — for EACH selector to fix, output exactly these four lines:
-FILE: <page object filename, e.g. swipe.page.ts>
-OLD: <the failing selector, copied verbatim, e.g. ~Carousel>
-NEW: <the corrected selector, e.g. //*[@resource-id="Carousel"]>
-REASON: <short reason>
-Separate multiple fixes with a line containing only three dashes: ---
-Output NOTHING else — no JSON, no code fences, no quotes around values, no prose. (This plain format avoids JSON quote-escaping problems.)`;
+OUTPUT FORMAT — return ONLY a JSON object (no prose, no markdown, no code fences), shaped EXACTLY:
+{"patches":[{"file":"<page object filename, e.g. swipe.page.ts>","oldSelector":"<the failing selector, copied verbatim, e.g. ~Carousel>","newSelector":"<the corrected selector, e.g. //*[@resource-id=\\"Carousel\\"]>","reason":"<short reason>"}]}
+One object in the array per failing selector. All JSON strings use double quotes; a double quote INSIDE a selector value (XPath) must be escaped as \\". Emit nothing before or after the JSON object.`;
 
 async function askModelToHeal(failures, uiHierarchy, pageObjects) {
   const pageObjectsText = Object.entries(pageObjects)
@@ -203,6 +199,14 @@ Output one FILE/OLD/NEW/REASON block per failing selector, in the format describ
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
     const response = await client.chat.completions.create({
       model: MODEL,
+      // A small local model at Ollama's default temperature (~0.8) drifts off any
+      // plaintext contract — that's why it returned prose. Two enforcement layers:
+      //   - temperature 0 on the first try (deterministic, best instruction-
+      //     following); a small bump on retries so a re-ask can actually vary.
+      //   - response_format json_object: Ollama constrains decoding to valid JSON,
+      //     so the model physically cannot emit prose. parsePatches reads the JSON.
+      temperature: attempt === 1 ? 0 : 0.3,
+      response_format: { type: 'json_object' },
       messages: [
         { role: 'system', content: HEAL_SYSTEM_PROMPT },
         { role: 'user', content: prompt },
@@ -221,12 +225,28 @@ Output one FILE/OLD/NEW/REASON block per failing selector, in the format describ
 // responds: the preferred plain FILE/OLD/NEW/REASON blocks (possibly wrapped in
 // markdown bold/bullets/fences), and — as a fallback — a JSON array.
 function parsePatches(text) {
-  // Strip surrounding markdown/quote decoration from a captured value.
+  const norm = arr => (Array.isArray(arr) ? arr : [])
+    .filter(p => p && p.file && p.oldSelector && p.newSelector)
+    .map(p => ({ file: p.file, oldSelector: p.oldSelector, newSelector: p.newSelector, reason: p.reason || 'healed' }));
+
+  // 1) Preferred (matches the forced response_format): a JSON object
+  //    {"patches":[...]}, or a bare array. Try the whole string first — that
+  //    handles brackets inside a reason string — then a substring fallback for
+  //    any stray text a run wraps around the JSON.
+  for (const candidate of [text, (text.match(/[[{][\s\S]*[\]}]/) || [])[0]]) {
+    if (!candidate) continue;
+    try {
+      const parsed = JSON.parse(candidate.replace(/,(\s*[\]}])/g, '$1'));
+      const arr = Array.isArray(parsed) ? parsed : parsed.patches;
+      const out = norm(arr);
+      if (out.length) return out;
+    } catch { /* not JSON on this candidate — try the next */ }
+  }
+
+  // 2) Fallback: plaintext FILE/OLD/NEW/REASON blocks. Leading markdown
+  //    (**, -, >, #) and a trailing "**" after the label are tolerated.
   const strip = s => s.replace(/^[\s>*`'"-]+/, '').replace(/[\s*`'"]+$/, '').trim();
   const patches = [];
-
-  // 1) Preferred: FILE/OLD/NEW/REASON blocks. Leading markdown (**, -, >, #) and
-  //    a trailing "**" after the label are tolerated.
   for (const block of text.split(/^\s*-{3,}\s*$/m)) {
     const grab = label => {
       const m = block.match(new RegExp(`^[\\s>*\`#-]*${label}:\\**\\s*(.+)$`, 'mi'));
@@ -238,19 +258,7 @@ function parsePatches(text) {
     const reason = grab('REASON') || 'healed';
     if (file && oldSelector && newSelector) patches.push({ file, oldSelector, newSelector, reason });
   }
-  if (patches.length) return patches;
-
-  // 2) Fallback: a JSON array (some runs emit JSON despite the instructions).
-  const m = text.match(/\[[\s\S]*\]/);
-  if (m) {
-    try {
-      const arr = JSON.parse(m[0].replace(/,(\s*[\]}])/g, '$1'));
-      return (Array.isArray(arr) ? arr : [])
-        .filter(p => p && p.file && p.oldSelector && p.newSelector)
-        .map(p => ({ file: p.file, oldSelector: p.oldSelector, newSelector: p.newSelector, reason: p.reason || 'healed' }));
-    } catch { /* unparseable JSON (e.g. unescaped quotes) — give up */ }
-  }
-  return [];
+  return patches;
 }
 
 // Reject selectors whose target isn't actually present in the captured DOM —
