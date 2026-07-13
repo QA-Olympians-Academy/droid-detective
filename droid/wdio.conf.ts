@@ -1,4 +1,9 @@
 import type { Options } from '@wdio/types'
+import path from 'node:path'
+
+// Resolve the APK relative to THIS config file, not the process cwd,
+// so `pnpm test` works from the repo root and in CI alike.
+const APP_PATH = path.resolve(__dirname, '../apps/demo.apk')
 
 export const config: Options.Testrunner = {
     runner: 'local',
@@ -20,7 +25,7 @@ export const config: Options.Testrunner = {
         platformName: 'Android',
         'appium:deviceName': 'emulator-5554',
         'appium:automationName': 'UiAutomator2',
-        'appium:app': '../apps/demo.apk',
+        'appium:app': APP_PATH,
         'appium:noReset': false,
         'appium:newCommandTimeout': 240
     }],
@@ -36,7 +41,7 @@ export const config: Options.Testrunner = {
             command: 'appium',
             args: {
                 relaxedSecurity: true,
-                log: '../appium.log'
+                log: path.resolve(__dirname, '../appium.log')
             }
         }]
     ],
