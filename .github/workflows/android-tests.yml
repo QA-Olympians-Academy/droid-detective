@@ -12,6 +12,14 @@ on:
         type: boolean
         default: true
 
+# GITHUB_TOKEN scopes the jobs need: the analyzer opens issues, review-locators
+# comments on PRs. Without this the token is read-only and `gh issue create`
+# fails with "Resource not accessible by integration".
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -53,7 +61,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.ollama/models
-          key: ollama-llama3.2-3b
+          key: ollama-llama3.1
 
       - name: Install Ollama and pull model
         run: |
@@ -133,7 +141,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.ollama/models
-          key: ollama-llama3.2-3b
+          key: ollama-llama3.1
 
       - name: Install Ollama and pull model
         run: |
