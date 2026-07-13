@@ -7,7 +7,7 @@
  * This script demonstrates the three-step healing pattern:
  *   1. Parse the Appium log for failing selectors
  *   2. Fetch the current UI hierarchy from the running device
- *   3. Ask Claude to patch the page objects, then retry
+ *   3. Ask a local model to patch the page objects, then retry
  *
  * The production version is at .github/scripts/heal-and-retry.js
  */
@@ -15,7 +15,13 @@
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
-const Anthropic = require('@anthropic-ai/sdk').default;
+const { OpenAI } = require('openai');
+
+const client = new OpenAI({
+  baseURL: process.env.LLM_BASE_URL || 'http://localhost:11434/v1',
+  apiKey: process.env.LLM_API_KEY || 'ollama',
+});
+const MODEL = process.env.LLM_MODEL || 'llama3.1';
 
 // Step 1 — parse the log
 function extractFailedSelectors(logPath) {
@@ -42,19 +48,16 @@ function getPageHierarchy() {
   }
 }
 
-// Step 3 — ask Claude for patches
+// Step 3 — ask a local model for patches
 async function getPatches(failures, hierarchy, pageObjectsDir) {
-  const client = new Anthropic();
-
   // Read all page object files
   const files = fs.readdirSync(pageObjectsDir).filter(f => f.endsWith('.ts'));
   const pageObjectsText = files
     .map(f => `### ${f}\n\`\`\`typescript\n${fs.readFileSync(path.join(pageObjectsDir, f), 'utf8')}\n\`\`\``)
     .join('\n\n');
 
-  const response = await client.messages.create({
-    model: 'claude-opus-4-5',
-    max_tokens: 1024,
+  const response = await client.chat.completions.create({
+    model: MODEL,
     messages: [{
       role: 'user',
       content: `You are a mobile test automation engineer.
@@ -73,7 +76,7 @@ Return only the JSON array — no prose.`,
     }],
   });
 
-  const text = response.content[0].text;
+  const text = response.choices[0]?.message?.content || '';
   const match = text.match(/\[[\s\S]*\]/);
   return match ? JSON.parse(match[0]) : [];
 }

@@ -75,7 +75,7 @@ heal-and-retry.js runs
       │
       ├── Step 2: adb shell uiautomator dump → get live DOM
       │
-      ├── Step 3: Send to Claude with page objects
+      ├── Step 3: Send to the local model (llama3.1) with page objects
       │           → returns JSON patch array
       │
       ├── Step 4: Apply patches to page object files

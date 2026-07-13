@@ -2,14 +2,20 @@
 'use strict';
 
 /**
- * Reads changed page-object files in a PR, asks Claude to review
- * the selectors for brittleness, then posts a PR comment.
+ * Reads changed page-object files in a PR, asks a local Ollama model
+ * to review the selectors for brittleness, then posts a PR comment.
+ * No cloud API key required.
  */
 
 const { execSync } = require('child_process');
-const Anthropic = require('@anthropic-ai/sdk').default;
+const { OpenAI } = require('openai');
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+// Ollama exposes an OpenAI-compatible endpoint; no real key is needed.
+const client = new OpenAI({
+  baseURL: process.env.LLM_BASE_URL || 'http://localhost:11434/v1',
+  apiKey: process.env.LLM_API_KEY || 'ollama',
+});
+const MODEL = process.env.LLM_MODEL || 'llama3.1';
 
 const REPO = process.env.GITHUB_REPOSITORY;
 const PR_NUMBER = process.env.PR_NUMBER;
@@ -34,10 +40,9 @@ function getDiff(files) {
   );
 }
 
-async function reviewWithClaude(diff) {
-  const message = await client.messages.create({
-    model: 'claude-sonnet-4-5',
-    max_tokens: 1024,
+async function reviewWithModel(diff) {
+  const response = await client.chat.completions.create({
+    model: MODEL,
     messages: [
       {
         role: 'user',
@@ -58,7 +63,7 @@ Format as a GitHub PR comment (markdown). Be concise. If all selectors look good
     ],
   });
 
-  return message.content[0].type === 'text' ? message.content[0].text : 'No review available';
+  return response.choices[0]?.message?.content || 'No review available';
 }
 
 function postPRComment(body) {
@@ -91,7 +96,7 @@ async function main() {
     process.exit(0);
   }
 
-  const review = await reviewWithClaude(diff);
+  const review = await reviewWithModel(diff);
   console.log('Review:\n', review);
   postPRComment(review);
   console.log('Done');

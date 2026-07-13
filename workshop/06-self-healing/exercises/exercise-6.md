@@ -1,7 +1,7 @@
 # Exercise 6 — Break → Watch → Heal
 
 **Time:** 20 minutes  
-**Prerequisites:** GitHub repo with Actions enabled, `ANTHROPIC_API_KEY` secret configured
+**Prerequisites:** GitHub repo with Actions enabled (CI installs Ollama and pulls `llama3.1` locally — no API key required)
 
 ---
 
@@ -52,7 +52,7 @@ After the test step fails, the `Self-heal failing tests` step runs.
 Read the step log and answer:
 1. What did `extractFailedSelectors()` find in the log?
 2. What did the DOM dump show about the element?
-3. What patch did Claude suggest?
+3. What patch did the local model suggest?
 4. Did the retry pass?
 
 ---

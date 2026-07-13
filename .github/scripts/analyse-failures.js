@@ -2,15 +2,21 @@
 'use strict';
 
 /**
- * Reads appium.log, asks Claude to summarise the root causes,
- * then opens a GitHub issue with the analysis.
+ * Reads appium.log, asks a local Ollama model to summarise the root
+ * causes, then opens a GitHub issue with the analysis. No cloud API
+ * key required.
  */
 
 const fs = require('fs');
 const { execSync } = require('child_process');
-const Anthropic = require('@anthropic-ai/sdk').default;
+const { OpenAI } = require('openai');
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+// Ollama exposes an OpenAI-compatible endpoint; no real key is needed.
+const client = new OpenAI({
+  baseURL: process.env.LLM_BASE_URL || 'http://localhost:11434/v1',
+  apiKey: process.env.LLM_API_KEY || 'ollama',
+});
+const MODEL = process.env.LLM_MODEL || 'llama3.1';
 
 const LOG_FILE = 'appium.log';
 const REPO = process.env.GITHUB_REPOSITORY;
@@ -25,10 +31,9 @@ function readLog() {
   return full.length > 15000 ? '...[truncated]\n' + full.slice(-15000) : full;
 }
 
-async function analyseWithClaude(log) {
-  const message = await client.messages.create({
-    model: 'claude-opus-4-5',
-    max_tokens: 1024,
+async function analyseWithModel(log) {
+  const response = await client.chat.completions.create({
+    model: MODEL,
     messages: [
       {
         role: 'user',
@@ -50,7 +55,7 @@ Use clear headings. Keep it under 400 words.`,
     ],
   });
 
-  return message.content[0].type === 'text' ? message.content[0].text : 'No analysis available';
+  return response.choices[0]?.message?.content || 'No analysis available';
 }
 
 function openGitHubIssue(body) {
@@ -71,7 +76,7 @@ function openGitHubIssue(body) {
 async function main() {
   console.log('📋 Analysing test failures…');
   const log = readLog();
-  const analysis = await analyseWithClaude(log);
+  const analysis = await analyseWithModel(log);
   console.log('Analysis:\n', analysis);
   openGitHubIssue(analysis);
   console.log('Done');

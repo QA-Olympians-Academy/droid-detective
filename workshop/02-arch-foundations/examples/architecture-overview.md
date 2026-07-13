@@ -68,10 +68,10 @@ Implements the core cycle:
 
 ```typescript
 while (steps < maxSteps) {
-  const dom = await driver.getPageSource()           // Observe
-  const response = await claude.messages.create({    // Think
-    system: compiledPrompt,
-    messages: history,
+  const dom = await driver.getPageSource()              // Observe
+  const response = await llm.chat.completions.create({  // Think — local model (llama3.1)
+    model: 'llama3.1',
+    messages: [{ role: 'system', content: compiledPrompt }, ...history],
   })
   const toolCall = extractToolCall(response)         // Plan
   const result = await executeTool(toolCall, driver) // Act
@@ -90,7 +90,7 @@ The DOM is passed in the user message, not the system prompt — this ensures th
 
 **File:** `bot/ai/agent/tools/element-action.ts`
 
-Exports the JSON schema array sent to the Claude API:
+Exports the JSON schema array sent to the local model (the LLM):
 
 ```typescript
 export const tools = [
@@ -142,6 +142,6 @@ This is the only layer that touches the Appium driver directly. Everything above
 | Device | Local emulator | LambdaTest cloud |
 | Customisation | Limited | Full — add any tool |
 | YAML flows | ✅ Built-in | ❌ Not applicable |
-| LLM provider | Anthropic (fixed) | Configurable via OpenRouter |
+| LLM provider | Ollama / local (llama3.1) | Configurable via OpenRouter |
 
 Both implement the same **Think → Act → Observe** loop. The Bot exists for cases where you need cloud devices, custom tools, or a specific LLM provider.

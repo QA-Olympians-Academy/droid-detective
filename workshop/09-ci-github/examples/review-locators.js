@@ -5,7 +5,7 @@
  * PR locator review script — workshop example.
  *
  * On a pull request, diffs changed page object files,
- * asks Claude to flag brittle selectors, and posts a PR comment.
+ * asks a local model to flag brittle selectors, and posts a PR comment.
  *
  * The production version is at .github/scripts/review-locators.js
  */
@@ -13,7 +13,13 @@
 const { execSync } = require('child_process');
 const fs = require('fs');
 const https = require('https');
-const Anthropic = require('@anthropic-ai/sdk').default;
+const { OpenAI } = require('openai');
+
+const client = new OpenAI({
+  baseURL: process.env.LLM_BASE_URL || 'http://localhost:11434/v1',
+  apiKey: process.env.LLM_API_KEY || 'ollama',
+});
+const MODEL = process.env.LLM_MODEL || 'llama3.1';
 
 const PAGE_OBJECTS_GLOB = 'droid/pageobjects/*.ts';
 
@@ -41,13 +47,10 @@ function getChangedPageObjects() {
   }
 }
 
-// Ask Claude to review the changed selectors
+// Ask a local model to review the changed selectors
 async function reviewSelectors(diff) {
-  const client = new Anthropic();
-
-  const response = await client.messages.create({
-    model: 'claude-opus-4-5',
-    max_tokens: 1024,
+  const response = await client.chat.completions.create({
+    model: MODEL,
     messages: [{
       role: 'user',
       content: `You are a mobile test automation engineer reviewing changed selectors in a pull request.
@@ -77,7 +80,7 @@ Format as markdown. Keep the response under 300 words.`,
     }],
   });
 
-  return response.content[0].text;
+  return response.choices[0]?.message?.content || '';
 }
 
 // Post a review comment on the PR

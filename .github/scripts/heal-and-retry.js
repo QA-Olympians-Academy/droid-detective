@@ -3,16 +3,22 @@
 
 /**
  * Self-healing script: reads appium.log for failing selectors,
- * fetches the current UI hierarchy via ADB, asks Claude to suggest
- * fixes, patches the page-object files, then re-runs the tests.
+ * fetches the current UI hierarchy via ADB, asks a local Ollama
+ * model to suggest fixes, patches the page-object files, then
+ * re-runs the tests. No cloud API key required.
  */
 
 const fs = require('fs');
 const path = require('path');
 const { execSync } = require('child_process');
-const Anthropic = require('@anthropic-ai/sdk').default;
+const { OpenAI } = require('openai');
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+// Ollama exposes an OpenAI-compatible endpoint; no real key is needed.
+const client = new OpenAI({
+  baseURL: process.env.LLM_BASE_URL || 'http://localhost:11434/v1',
+  apiKey: process.env.LLM_API_KEY || 'ollama',
+});
+const MODEL = process.env.LLM_MODEL || 'llama3.1';
 
 const LOG_FILE = 'appium.log';
 const PAGE_OBJECTS_DIR = path.join(__dirname, '../../droid/pageobjects');
@@ -64,7 +70,7 @@ function readPageObjects() {
   return contents;
 }
 
-async function askClaudeToHeal(failures, uiHierarchy, pageObjects) {
+async function askModelToHeal(failures, uiHierarchy, pageObjects) {
   const pageObjectsText = Object.entries(pageObjects)
     .map(([name, content]) => `### ${name}\n\`\`\`typescript\n${content}\n\`\`\``)
     .join('\n\n');
@@ -94,23 +100,22 @@ Return ONLY a JSON array like:
 ]
 Do not include any prose outside the JSON array.`;
 
-  const message = await client.messages.create({
-    model: 'claude-opus-4-5',
-    max_tokens: 2048,
+  const response = await client.chat.completions.create({
+    model: MODEL,
     messages: [{ role: 'user', content: prompt }],
   });
 
-  const text = message.content[0].type === 'text' ? message.content[0].text : '';
+  const text = response.choices[0]?.message?.content || '';
   const jsonMatch = text.match(/\[[\s\S]*\]/);
   if (!jsonMatch) {
-    console.warn('Claude did not return a JSON array — no patches applied');
+    console.warn('Model did not return a JSON array — no patches applied');
     return [];
   }
 
   try {
     return JSON.parse(jsonMatch[0]);
   } catch (e) {
-    console.warn('Failed to parse Claude response as JSON:', e.message);
+    console.warn('Failed to parse model response as JSON:', e.message);
     return [];
   }
 }
@@ -150,8 +155,8 @@ async function main() {
   const uiHierarchy = getUiHierarchy();
   const pageObjects = readPageObjects();
 
-  console.log('Asking Claude for healing suggestions…');
-  const patches = await askClaudeToHeal(failures, uiHierarchy, pageObjects);
+  console.log(`Asking ${MODEL} (Ollama) for healing suggestions…`);
+  const patches = await askModelToHeal(failures, uiHierarchy, pageObjects);
 
   if (patches.length === 0) {
     console.log('No patches suggested');

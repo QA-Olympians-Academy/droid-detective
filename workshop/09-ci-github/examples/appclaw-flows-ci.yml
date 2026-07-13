@@ -82,7 +82,9 @@ jobs:
             exit $FAILED
         env:
           # AppClaw configuration
-          LLM_PROVIDER: anthropic        # only used if AGENT_MODE=dom is invoked
+          LLM_PROVIDER: ollama           # local model; only used if a dom-agent fallback runs
+          LLM_BASE_URL: http://localhost:11434/v1
+          LLM_MODEL: llama3.1
           AGENT_MODE: dom
           PLATFORM: android
           DEVICE_UDID: emulator-5554
@@ -139,6 +141,15 @@ jobs:
       - name: Install AppClaw CLI
         run: npm install -g appclaw
 
+      # Local model server for the explorer — no cloud LLM key needed.
+      # Runs on CPU in CI, so exploration is slower than on a GPU.
+      - name: Install Ollama and pull model
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          ollama serve &
+          sleep 5
+          ollama pull llama3.1
+
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | \
@@ -162,8 +173,10 @@ jobs:
               --num-flows 8 \
               --output-dir flows/generated
         env:
-          LLM_PROVIDER: anthropic
-          LLM_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          LLM_PROVIDER: ollama
+          LLM_API_KEY: ollama            # placeholder; value is ignored
+          LLM_BASE_URL: http://localhost:11434/v1
+          LLM_MODEL: llama3.1
           AGENT_MODE: dom
           PLATFORM: android
           DEVICE_UDID: emulator-5554

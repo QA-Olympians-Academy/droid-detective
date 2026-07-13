@@ -1,7 +1,7 @@
 # Exercise 9 — Wire Up the Full CI Loop
 
 **Time:** 25 minutes  
-**Prerequisites:** GitHub repo with Actions enabled, `ANTHROPIC_API_KEY` secret configured
+**Prerequisites:** GitHub repo with Actions enabled (CI installs Ollama and pulls `llama3.1` locally — no API key required)
 
 ---
 
@@ -32,17 +32,21 @@ cp workshop/09-ci-github/examples/android-tests.yml .github/workflows/
 
 ---
 
-## Part 2 — Configure secrets (3 min)
+## Part 2 — Confirm the local model in CI (3 min)
 
-In your GitHub repo: **Settings → Secrets and variables → Actions → New repository secret**
+No LLM API key is required anymore. Self-healing, failure analysis, and locator review run against a **local** model via Ollama, which the workflow installs and pulls (`ollama pull llama3.1`) inside the job.
 
-Add:
+The LLM steps read their config from environment variables set in the workflow:
 
-| Name | Value |
-|------|-------|
-| `ANTHROPIC_API_KEY` | Your Anthropic API key |
+```yaml
+env:
+  LLM_PROVIDER: ollama
+  LLM_API_KEY: ollama          # placeholder — value ignored by Ollama
+  LLM_BASE_URL: http://localhost:11434/v1
+  LLM_MODEL: llama3.1
+```
 
-(LambdaTest secrets are only needed for the Bot workflow — skip if not testing the Bot.)
+Tradeoff: on GitHub-hosted runners the model runs on CPU, so the heal/analyse/review steps are slow — but they cost $0. The only secrets you may still need are LambdaTest (`LT_*`), and only for the Bot workflow — skip if not testing the Bot.
 
 ---
 
@@ -86,7 +90,7 @@ git push origin exercise-9-ci
 Watch the Actions run. Answer:
 1. Which step failed first? What was the error?
 2. Did `Self-heal failing tests` run? What did it log?
-3. Did Claude suggest a patch? What was the `newSelector`?
+3. Did the local model suggest a patch? What was the `newSelector`?
 4. Did the retry pass?
 5. Did the `review-locators` job flag the changed selector in a PR comment?
 
@@ -146,7 +150,7 @@ In the Actions run for Part 4 (the failure run):
 | Symptom | Fix |
 |---------|-----|
 | Emulator fails to start | Check KVM step is present and `api-level: 34` matches the installed system image |
-| `ANTHROPIC_API_KEY` missing | Add the secret in GitHub Settings — the script will silently skip otherwise |
+| Local model unreachable | Ensure the workflow's Ollama install + `ollama pull llama3.1` step ran and `ollama serve` is up — the script will silently skip healing otherwise |
 | `analyse-failures.js` does not run | Check `github.ref == 'refs/heads/main'` condition — only runs on `main` |
 | PR comment not posted | Check `PR_NUMBER` and `GH_TOKEN` are correctly passed; verify `review-locators` job condition |
 | Healing retry fails | The failing selector may be a Category B or C — healing only handles renames automatically |

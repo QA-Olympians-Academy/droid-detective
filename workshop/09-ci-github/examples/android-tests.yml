@@ -60,7 +60,9 @@ jobs:
           disable-animations: true
           script: pnpm test
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # WDIO specs are deterministic; these only matter if a spec triggers the agent.
+          LLM_BASE_URL: http://localhost:11434/v1
+          LLM_MODEL: llama3.1
         continue-on-error: true
         id: run_tests
 
@@ -75,19 +77,31 @@ jobs:
             screen-*.png
           retention-days: 7
 
+      # 8b. Install a local LLM (Ollama + llama3.1) for the AI steps below.
+      #     No cloud key needed — models run locally. On CI they run on CPU
+      #     (no GPU), so inference is slow.
+      - name: Install Ollama and pull model
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          ollama serve &
+          sleep 5
+          ollama pull llama3.1
+
       # 9. Self-heal: only when tests failed
       - name: Self-heal failing tests
         if: steps.run_tests.outcome == 'failure'
         run: node .github/scripts/heal-and-retry.js
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          LLM_BASE_URL: http://localhost:11434/v1
+          LLM_MODEL: llama3.1
 
       # 10. Open a GitHub issue with AI failure analysis (main branch only)
       - name: Analyse failures and open issue
         if: steps.run_tests.outcome == 'failure' && github.ref == 'refs/heads/main'
         run: node .github/scripts/analyse-failures.js
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          LLM_BASE_URL: http://localhost:11434/v1
+          LLM_MODEL: llama3.1
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
 
@@ -118,10 +132,21 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Install a local LLM (Ollama + llama3.1) for the review script.
+      # No cloud key needed — models run locally. On CI they run on CPU
+      # (no GPU), so inference is slow.
+      - name: Install Ollama and pull model
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          ollama serve &
+          sleep 5
+          ollama pull llama3.1
+
       - name: Review changed locators
         run: node .github/scripts/review-locators.js
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          LLM_BASE_URL: http://localhost:11434/v1
+          LLM_MODEL: llama3.1
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}

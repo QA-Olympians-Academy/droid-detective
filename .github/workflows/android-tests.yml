@@ -52,7 +52,9 @@ jobs:
           disable-animations: true
           script: pnpm test
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # WDIO specs are deterministic; these only matter if a spec triggers the agent.
+          LLM_BASE_URL: http://localhost:11434/v1
+          LLM_MODEL: llama3.1
         continue-on-error: true
         id: run_tests
 
@@ -67,17 +69,27 @@ jobs:
             allure-results/
           retention-days: 7
 
+      # Local models run on CPU in CI (no GPU), so inference is slow.
+      - name: Install Ollama and pull model
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          ollama serve &
+          sleep 5
+          ollama pull llama3.1
+
       - name: Self-heal failing tests
         if: steps.run_tests.outcome == 'failure' && (github.event.inputs.self_heal == 'true' || github.event_name != 'workflow_dispatch')
         run: node .github/scripts/heal-and-retry.js
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          LLM_BASE_URL: http://localhost:11434/v1
+          LLM_MODEL: llama3.1
 
       - name: Analyse failures and open issue
         if: steps.run_tests.outcome == 'failure' && github.ref == 'refs/heads/main'
         run: node .github/scripts/analyse-failures.js
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          LLM_BASE_URL: http://localhost:11434/v1
+          LLM_MODEL: llama3.1
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
 
@@ -107,10 +119,19 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Local models run on CPU in CI (no GPU), so inference is slow.
+      - name: Install Ollama and pull model
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          ollama serve &
+          sleep 5
+          ollama pull llama3.1
+
       - name: Review changed locators
         run: node .github/scripts/review-locators.js
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          LLM_BASE_URL: http://localhost:11434/v1
+          LLM_MODEL: llama3.1
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}

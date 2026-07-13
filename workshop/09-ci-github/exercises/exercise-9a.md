@@ -7,7 +7,7 @@
 
 ## Goal
 
-Wire your recorded AppClaw YAML flows into a GitHub Actions workflow so they run on every push — without calling any LLM and without requiring a `ANTHROPIC_API_KEY`.
+Wire your recorded AppClaw YAML flows into a GitHub Actions workflow so they run on every push — without calling any LLM and without any model setup (no Ollama, no API key).
 
 ---
 
@@ -136,7 +136,7 @@ The new flow file appears in `flows/`. Push it — it runs automatically in the 
 - [ ] `appclaw-flows-ci.yml` is in `.github/workflows/`
 - [ ] `TEST_EMAIL` and `TEST_PASSWORD` secrets are configured
 - [ ] Both `login.yaml` and `forms-toggle.yaml` pass in the Actions run
-- [ ] You can explain why no `ANTHROPIC_API_KEY` is needed for this workflow
+- [ ] You can explain why no LLM (and no model setup) is needed for this workflow
 - [ ] You saw a broken flow fail and produce an artifact
 - [ ] (Bonus) New flow runs automatically without changing the workflow
 
@@ -146,10 +146,10 @@ The new flow file appears in `flows/`. Push it — it runs automatically in the 
 
 | Trigger | LLM calls | Cost |
 |---------|-----------|------|
-| AppClaw YAML flow | 0 | Free |
-| AppClaw agent run | ~2–5 per step | Cents per run |
-| Bot agent run | ~2–5 per step | Cents per run |
-| `heal-and-retry.js` | 1 call on failure | Cents per failure |
-| `analyse-failures.js` | 1 call on failure | Cents per failure |
+| AppClaw YAML flow | 0 | Free — no model needed |
+| AppClaw agent run | ~2–5 per step | $0 (local Ollama) — but slow on CPU |
+| Bot agent run | ~2–5 per step | $0 (local Ollama) — but slow on CPU |
+| `heal-and-retry.js` | 1 call on failure | $0 (local Ollama) — but slow on CPU |
+| `analyse-failures.js` | 1 call on failure | $0 (local Ollama) — but slow on CPU |
 
-YAML flows should be the CI default. Agent runs are for exploration, debugging, and healing — not the steady-state regression gate.
+With local models the cost is compute (and time), not dollars per token. On GitHub-hosted runners the model runs on CPU, so each LLM call is slow — another reason YAML flows should be the CI default. Agent runs are for exploration, debugging, and healing — not the steady-state regression gate.

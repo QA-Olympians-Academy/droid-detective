@@ -147,7 +147,18 @@ See `workshop/02-arch-foundations/examples/architecture-overview.md` for the ann
 | JDK 11+ | [adoptium.net](https://adoptium.net) | `java -version` |
 | Android SDK | Android Studio | `adb --version` |
 | Claude Code | `npm i -g @anthropic-ai/claude-code` | `claude --version` |
+| Ollama | [ollama.com](https://ollama.com) | `ollama --version` |
 | AppClaw | `npm i -g appclaw` | `appclaw --version` |
+
+> **Local models — no cloud LLM key required.** This workshop runs the agent
+> loop, healing, and analysis on a local model served by Ollama. Pull it once:
+>
+> ```bash
+> ollama serve &            # start the local server (port 11434)
+> ollama pull llama3.1      # the DOM-mode reasoning model
+> ollama pull llama3.2-vision   # optional, only for vision mode
+> ollama list               # verify the models are present
+> ```
 
 ### Environment variables
 
@@ -169,9 +180,11 @@ pnpm run appium:install-driver
 ### Configure .env
 
 ```env
-ANTHROPIC_API_KEY=sk-ant-...
-LLM_PROVIDER=anthropic
-LLM_API_KEY=sk-ant-...
+# Local LLM via Ollama — no cloud API key needed
+LLM_PROVIDER=ollama
+LLM_API_KEY=ollama            # placeholder; value is ignored
+LLM_BASE_URL=http://localhost:11434/v1
+LLM_MODEL=llama3.1
 AGENT_MODE=dom
 PLATFORM=android
 DEVICE_UDID=emulator-5554
@@ -660,7 +673,8 @@ AppClaw flows run fast (no model call per step) as the first CI gate. WebdriverI
     APP_PATH: apps/demo.apk
 ```
 
-No `ANTHROPIC_API_KEY` needed — YAML flows make zero LLM calls.
+No LLM key needed here — and none anywhere in this workshop: YAML flows make
+zero model calls, and the agentic steps use a local Ollama model.
 
 ### KVM acceleration
 
@@ -677,12 +691,24 @@ Without this the emulator runs at ~5% of native speed.
 
 ### Self-healing step (runs only on failure)
 
+The healing/analysis scripts call a local Ollama model, so CI installs Ollama
+and pulls `llama3.1` first (runs on CPU in CI — slower than a GPU, but free and
+keyless):
+
 ```yaml
+- name: Install Ollama and pull model
+  run: |
+    curl -fsSL https://ollama.com/install.sh | sh
+    ollama serve &
+    sleep 5
+    ollama pull llama3.1
+
 - name: Self-heal failing tests
   if: steps.run_tests.outcome == 'failure'
   run: node .github/scripts/heal-and-retry.js
   env:
-    ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    LLM_BASE_URL: http://localhost:11434/v1
+    LLM_MODEL: llama3.1
 ```
 
 ### Failure analysis issues (main branch only)
@@ -692,7 +718,8 @@ Without this the emulator runs at ~5% of native speed.
   if: steps.run_tests.outcome == 'failure' && github.ref == 'refs/heads/main'
   run: node .github/scripts/analyse-failures.js
   env:
-    ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    LLM_BASE_URL: http://localhost:11434/v1
+    LLM_MODEL: llama3.1
     GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     GITHUB_REPOSITORY: ${{ github.repository }}
 ```
@@ -706,7 +733,8 @@ review-locators:
     - name: Review changed locators
       run: node .github/scripts/review-locators.js
       env:
-        ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        LLM_BASE_URL: http://localhost:11434/v1
+        LLM_MODEL: llama3.1
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
         BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -719,7 +747,7 @@ review-locators:
 |--------|-------------|
 | `TEST_EMAIL` | AppClaw flows |
 | `TEST_PASSWORD` | AppClaw flows |
-| `ANTHROPIC_API_KEY` | Self-healing, failure analysis, locator review |
+| ~~`ANTHROPIC_API_KEY`~~ | No longer needed — healing/analysis use a local Ollama model |
 | `LT_USERNAME` | Bot workflow (LambdaTest) |
 | `LT_ACCESS_KEY` | Bot workflow (LambdaTest) |
 | `GITHUB_TOKEN` | Auto-provided |
@@ -839,13 +867,16 @@ appclaw --explore "app description"           # generate flows
 
 ### LLM cost per CI trigger
 
+With local models via Ollama, every call is **free** — you trade per-token cost
+for local compute (slower, especially on CPU in CI).
+
 | Trigger | LLM calls | Cost |
 |---------|-----------|------|
 | AppClaw YAML flow | 0 | Free |
-| AppClaw agent run | ~2–5 per step | Cents per run |
-| `heal-and-retry.js` | 1 call on failure | Cents per failure |
-| `analyse-failures.js` | 1 call on failure | Cents per failure |
-| `review-locators.js` | 1 call per PR | Cents per PR |
+| AppClaw agent run | ~2–5 per step | Free (local compute) |
+| `heal-and-retry.js` | 1 call on failure | Free (local compute) |
+| `analyse-failures.js` | 1 call on failure | Free (local compute) |
+| `review-locators.js` | 1 call per PR | Free (local compute) |
 
 ### Common failures and fixes
 

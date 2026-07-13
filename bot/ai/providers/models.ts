@@ -19,4 +19,17 @@ export enum GrokModel {
   GROK_4 = 'xai/grok-4',
 }
 
-export type LLMModel = GeminiModel | OpenAIModel | AnthropicModel | GrokModel;
+// Local models served by Ollama (pull with `ollama pull <name>`).
+export enum OllamaModel {
+  LLAMA_3_1 = 'llama3.1',
+  LLAMA_3_2 = 'llama3.2',
+  LLAMA_3_2_VISION = 'llama3.2-vision',
+  QWEN_2_5 = 'qwen2.5',
+}
+
+export type LLMModel =
+  | GeminiModel
+  | OpenAIModel
+  | AnthropicModel
+  | GrokModel
+  | OllamaModel;

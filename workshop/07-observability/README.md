@@ -37,7 +37,7 @@ Every agent step produces a reasoning trace: what the agent saw, what it conclud
 
 See [examples/reasoning-trace-example.md](examples/reasoning-trace-example.md) for an annotated trace showing how to read each component.
 
-Raw trace format (from the Anthropic API):
+Raw trace format (from the local model):
 ```json
 {
   "type": "thinking",

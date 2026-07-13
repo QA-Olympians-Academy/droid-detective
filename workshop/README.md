@@ -73,10 +73,12 @@ adb shell uiautomator dump /dev/stdout # dump live device hierarchy
 
 ## LLM Cost Reference
 
+The workshop runs on a **local** model via Ollama (`llama3.1`), so LLM calls cost $0 — the tradeoff is local compute and slower responses (especially on CI CPU runners).
+
 | Trigger | LLM calls | Cost |
 |---------|-----------|------|
-| AppClaw YAML flow | 0 | Free |
-| AppClaw agent run | ~2–5 per step | Cents per run |
-| Bot agent run | ~2–5 per step | Cents per run |
-| `heal-and-retry.js` | 1 on failure | Cents per failure |
-| `analyse-failures.js` | 1 on failure | Cents per failure |
+| AppClaw YAML flow | 0 | Free — no model needed |
+| AppClaw agent run | ~2–5 per step | $0 (local Ollama) — but slow on CPU |
+| Bot agent run | ~2–5 per step | $0 (local Ollama) — but slow on CPU |
+| `heal-and-retry.js` | 1 on failure | $0 (local Ollama) — but slow on CPU |
+| `analyse-failures.js` | 1 on failure | $0 (local Ollama) — but slow on CPU |

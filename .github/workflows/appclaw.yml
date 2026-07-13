@@ -57,7 +57,11 @@ jobs:
               done
             fi
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # YAML flows are deterministic (zero LLM calls). These only apply if a
+          # dom-agent fallback is invoked — pointed at a local Ollama model, no cloud key.
+          LLM_PROVIDER: ollama
+          LLM_BASE_URL: http://localhost:11434/v1
+          LLM_MODEL: llama3.1
 
       - name: Upload AppClaw artifacts
         if: always()

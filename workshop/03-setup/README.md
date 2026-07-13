@@ -15,6 +15,7 @@
 | Android SDK | Android Studio or `sdkmanager` | `adb --version` |
 | Claude Code | `npm i -g @anthropic-ai/claude-code` | `claude --version` |
 | AppClaw | `npm i -g appclaw` | `appclaw --version` |
+| Ollama (local model) | [ollama.com](https://ollama.com) | `ollama --version` |
 
 ---
 
@@ -65,18 +66,33 @@ adb devices   # expected: emulator-5554   device
 
 ---
 
-## Step 5 — Configure .env
+## Step 5 — Start the local model (Ollama)
+
+AppClaw and the Bot now call a **local** model through Ollama — no cloud API key required. Start the server and pull the model:
+
+```bash
+ollama serve                    # start the local server (skip if already running)
+ollama pull llama3.1            # the reasoning model used throughout the course
+ollama pull llama3.2-vision     # optional — only needed for vision mode
+```
+
+Verify: `ollama list` should show `llama3.1`.
+
+---
+
+## Step 6 — Configure .env
 
 ```bash
 cp .env.example .env
 ```
 
 ```env
-ANTHROPIC_API_KEY=sk-ant-...
-
-# AppClaw
-LLM_PROVIDER=anthropic
-LLM_API_KEY=sk-ant-...
+# AppClaw — local model via Ollama
+LLM_PROVIDER=ollama
+LLM_API_KEY=ollama                       # placeholder — value is ignored by Ollama
+LLM_BASE_URL=http://localhost:11434/v1
+LLM_MODEL=llama3.1
+VISION_MODEL=llama3.2-vision
 AGENT_MODE=dom
 PLATFORM=android
 DEVICE_UDID=emulator-5554
@@ -94,7 +110,7 @@ LT_APP_URL=lt://APP123456
 
 ---
 
-## Step 6 — Smoke test
+## Step 7 — Smoke test
 
 ```bash
 pnpm test
@@ -111,7 +127,7 @@ Expected: 9 passing tests. Common issues:
 
 ---
 
-## Step 7 — Claude Code authentication
+## Step 8 — Claude Code authentication
 
 ```bash
 claude   # opens browser — log in with your Anthropic account
@@ -124,7 +140,7 @@ Verify Claude has project context:
 
 ---
 
-## Step 8 — Validate the agentic environment
+## Step 9 — Validate the agentic environment
 
 Run your first plain-English prompt:
 
@@ -155,5 +171,6 @@ Understanding these shapes how you write test goals, system prompts, and healing
 - [ ] `pnpm test` passes all 9 tests
 - [ ] `appclaw --version` returns 1.1.x or higher
 - [ ] `claude --version` returns a version number
-- [ ] `.env` is populated with `ANTHROPIC_API_KEY`
+- [ ] `ollama list` shows `llama3.1`
+- [ ] `.env` is populated with `LLM_PROVIDER=ollama` and `LLM_MODEL=llama3.1`
 - [ ] `appclaw "Open the Login screen"` produces a step log

@@ -4,7 +4,7 @@
 /**
  * Failure analysis script — workshop example.
  *
- * Reads appium.log, asks Claude to summarise root causes,
+ * Reads appium.log, asks a local model to summarise root causes,
  * and opens a structured GitHub issue via the REST API.
  *
  * The production version is at .github/scripts/analyse-failures.js
@@ -12,10 +12,16 @@
 
 const fs = require('fs');
 const https = require('https');
-const Anthropic = require('@anthropic-ai/sdk').default;
+const { OpenAI } = require('openai');
+
+const client = new OpenAI({
+  baseURL: process.env.LLM_BASE_URL || 'http://localhost:11434/v1',
+  apiKey: process.env.LLM_API_KEY || 'ollama',
+});
+const MODEL = process.env.LLM_MODEL || 'llama3.1';
 
 const LOG_PATH = 'appium.log';
-const MAX_LOG_CHARS = 12000; // fits comfortably in Claude's context
+const MAX_LOG_CHARS = 12000; // fits comfortably in the local model's context
 
 // Read and trim the log so it fits in the prompt
 function readLog(logPath) {
@@ -27,13 +33,10 @@ function readLog(logPath) {
     : full;
 }
 
-// Ask Claude to produce a structured failure analysis
+// Ask a local model to produce a structured failure analysis
 async function analyseLog(log) {
-  const client = new Anthropic();
-
-  const response = await client.messages.create({
-    model: 'claude-opus-4-5',
-    max_tokens: 1024,
+  const response = await client.chat.completions.create({
+    model: MODEL,
     messages: [{
       role: 'user',
       content: `You are a mobile test automation engineer analysing a CI failure.
@@ -61,7 +64,7 @@ Keep the total response under 400 words.`,
     }],
   });
 
-  return response.content[0].text;
+  return response.choices[0]?.message?.content || '';
 }
 
 // Open a GitHub issue using the REST API

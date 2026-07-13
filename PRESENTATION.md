@@ -137,8 +137,8 @@ Not just pattern-match text — actually understand that a `ViewGroup` with `con
 **2. MCP gives agents real tool access**
 Claude can call Appium directly: dump hierarchy, tap elements, type text, assert state — in a tool loop, not just in chat.
 
-**3. Models are fast and cheap enough for CI**
-A full test-generation cycle now costs cents and completes in seconds, not minutes.
+**3. Local models are capable — and free — enough for CI**
+A full test-generation cycle now runs on free local models (llama3.1 via Ollama) — no per-token cost, and slower than cloud but fine for CI on your own compute.
 
 The infrastructure finally caught up with the idea.
 
@@ -222,7 +222,7 @@ Goal: "Verify login works with valid credentials"
 ```typescript
 while (!done && steps < MAX_STEPS) {
     const response = await claude.messages.create({
-        model: 'claude-opus-4-7',
+        model: 'llama3.1',
         tools: appiumTools,          // getPageSource, tap, type, assert…
         messages: conversationHistory
     })
@@ -317,7 +317,7 @@ Real-time, no manual dump, no XML parsing.
 
 | Component | Role |
 |-----------|------|
-| **LLM (Claude)** | Reasons about the UI, decides what to do next |
+| **LLM (llama3.1, local via Ollama)** | Reasons about the UI, decides what to do next |
 | **MCP / tool layer** | Exposes Appium actions as callable functions |
 | **Appium + UIAutomator2** | Executes actions on the real device or emulator |
 | **Test runner (WebdriverIO)** | Provides spec structure, assertions, CI hook |
@@ -345,11 +345,16 @@ The agent orchestrates all four — you configure the boundaries of each.
 | Android SDK | API 34 | `sdkmanager --list` |
 | Appium | 2.x | `appium -v` |
 | AppClaw | latest | `appclaw --version` |
+| Ollama | latest | `ollama --version` |
 | Claude Code | latest | `claude --version` |
 
 ```bash
 # Verify everything at once
 pnpm run check:env
+
+# One-time local LLM setup (install from https://ollama.com)
+ollama serve            # start the local model server
+ollama pull llama3.1    # download the workshop model
 ```
 
 ---
@@ -357,9 +362,12 @@ pnpm run check:env
 ## Required Environment Variables
 
 ```env
-# Anthropic
-LLM_PROVIDER=anthropic
-LLM_API_KEY=sk-ant-...
+# Ollama (local — no cloud API key needed)
+LLM_PROVIDER=ollama
+LLM_API_KEY=ollama
+LLM_BASE_URL=http://localhost:11434/v1
+LLM_MODEL=llama3.1
+VISION_MODEL=llama3.2-vision
 
 # AppClaw / agent
 AGENT_MODE=dom
@@ -832,7 +840,7 @@ const selectors = extractFailedSelectors(log)
 // 2. Get live DOM via ADB
 const hierarchy = execSync('adb shell uiautomator dump /dev/stdout').toString()
 
-// 3. Ask Claude for patches
+// 3. Ask the local model (llama3.1) for patches
 const { patches } = await getPatches(selectors, hierarchy)
 // patches: [{ file, old, new }, ...]
 
@@ -943,7 +951,7 @@ Log `LOW` confidence actions as warnings — they're the selectors most likely t
 const log = fs.readFileSync('appium.log', 'utf8').slice(-12000)
 
 const { content } = await client.messages.create({
-    model: 'claude-opus-4-7',
+    model: 'llama3.1',
     messages: [{ role: 'user', content:
         `Mobile suite failed. Log:\n${log}\n\n` +
         `Respond with:\n## Summary\n## Failing tests\n` +
@@ -1172,11 +1180,11 @@ Push / PR
 
 | Trigger | LLM calls | Cost |
 |---------|-----------|------|
-| AppClaw YAML flow | **0** | **Free** |
-| AppClaw agent run | ~2–5 per step | Cents per run |
-| Bot agent run | ~2–5 per step | Cents per run |
-| `heal-and-retry.js` | 1 call on failure | Cents per failure |
-| `analyse-failures.js` | 1 call on failure | Cents per failure |
+| AppClaw YAML flow | **0** | **Free** — no LLM |
+| AppClaw agent run | ~2–5 per step | **Free** (local) — slower |
+| Bot agent run | ~2–5 per step | **Free** (local) — slower |
+| `heal-and-retry.js` | 1 call on failure | **Free** (local) |
+| `analyse-failures.js` | 1 call on failure | **Free** (local) |
 
 **YAML flows are the CI default.** Agent runs are for exploration, debugging, and healing — not the steady-state regression gate.
 
@@ -1230,7 +1238,9 @@ review-locators:
     - name: Review changed locators
       run: node .github/scripts/review-locators.js
       env:
-        ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        LLM_PROVIDER: ollama
+        LLM_BASE_URL: http://localhost:11434/v1
+        LLM_MODEL: llama3.1
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
         BASE_SHA: ${{ github.event.pull_request.base.sha }}
@@ -1270,7 +1280,7 @@ cp workshop/09-ci-github/examples/heal-and-retry.js .github/scripts/
 cp workshop/09-ci-github/examples/analyse-failures.js .github/scripts/
 ```
 
-1. Add `ANTHROPIC_API_KEY` to GitHub Secrets
+1. Ensure the runner has Ollama running (`ollama serve` + `ollama pull llama3.1`) — no cloud API key needed
 2. Push a clean branch — confirm all tests pass
 3. Break a selector, push — watch the heal step fire
 4. If healing fails, trigger on `main` — observe the GitHub Issue
@@ -1444,7 +1454,7 @@ Future capabilities · Multi-agent architectures · Locked-in learning with game
 
 **LLMs reason about UI** — not just match patterns
 **MCP connects agents to real tools** — Appium, file system, GitHub
-**Models are fast enough for CI** — cents per run, seconds to complete
+**Local models are free enough for CI** — no per-token cost, running on your own compute
 
 The combination did not exist 18 months ago. It exists today.
 

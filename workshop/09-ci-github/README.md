@@ -12,7 +12,7 @@
 - Run AppClaw YAML flows as deterministic, zero-LLM-cost CI jobs
 - Manage AppClaw secrets safely via GitHub Actions secrets
 - Wire self-healing as a CI step that runs only on failure
-- Add automated PR locator review using Claude
+- Add automated PR locator review using the local model
 - Generate AI-powered failure analysis issues on `main` breakages
 - Manage secrets and artifacts correctly
 
@@ -119,11 +119,16 @@ Configure under **Settings → Secrets and variables → Actions**:
 |--------|-------------|
 | `TEST_EMAIL` | AppClaw flows (credential injection) |
 | `TEST_PASSWORD` | AppClaw flows (credential injection) |
-| `ANTHROPIC_API_KEY` | Self-healing, failure analysis, locator review |
 | `LT_USERNAME` | Bot workflow (LambdaTest) |
 | `LT_ACCESS_KEY` | Bot workflow (LambdaTest) |
 | `LT_APP_URL` | Bot workflow (LambdaTest) |
 | `GITHUB_TOKEN` | Auto-provided — no setup needed |
+
+> **No `ANTHROPIC_API_KEY` (or any LLM key) is required anymore.** Self-healing, failure
+> analysis, and locator review now run against a **local** model via Ollama. The CI job installs
+> Ollama and runs `ollama pull llama3.1` before the steps that need it. Tradeoff: on GitHub-hosted
+> runners the model runs on CPU (no GPU), so these LLM steps are noticeably slower than the old
+> cloud API — but they cost $0 per call.
 
 ---
 
@@ -169,10 +174,13 @@ The heal step runs **only when tests failed** using the `outcome` context from t
   if: steps.run_tests.outcome == 'failure'
   run: node .github/scripts/heal-and-retry.js
   env:
-    ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    LLM_PROVIDER: ollama
+    LLM_API_KEY: ollama
+    LLM_BASE_URL: http://localhost:11434/v1
+    LLM_MODEL: llama3.1
 ```
 
-The script (`heal-and-retry.js`) reads `appium.log`, fetches the live DOM via ADB, asks Claude for patches, applies them, and retries `pnpm test`. If the retry passes, CI turns green without human intervention.
+The script (`heal-and-retry.js`) reads `appium.log`, fetches the live DOM via ADB, asks the local model for patches, applies them, and retries `pnpm test`. If the retry passes, CI turns green without human intervention.
 
 See `examples/heal-and-retry.js` in Chapter 6.
 
@@ -187,7 +195,10 @@ When healing cannot recover (or the failure is on `main`), `analyse-failures.js`
   if: steps.run_tests.outcome == 'failure' && github.ref == 'refs/heads/main'
   run: node .github/scripts/analyse-failures.js
   env:
-    ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    LLM_PROVIDER: ollama
+    LLM_API_KEY: ollama
+    LLM_BASE_URL: http://localhost:11434/v1
+    LLM_MODEL: llama3.1
     GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     GITHUB_REPOSITORY: ${{ github.repository }}
 ```
@@ -207,14 +218,17 @@ review-locators:
     - name: Review changed locators
       run: node .github/scripts/review-locators.js
       env:
-        ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        LLM_PROVIDER: ollama
+        LLM_API_KEY: ollama
+        LLM_BASE_URL: http://localhost:11434/v1
+        LLM_MODEL: llama3.1
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
         BASE_SHA: ${{ github.event.pull_request.base.sha }}
         HEAD_SHA: ${{ github.event.pull_request.head.sha }}
 ```
 
-The script diffs changed page object files, asks Claude to review the selectors for brittleness, and posts a comment directly on the PR.
+The script diffs changed page object files, asks the local model to review the selectors for brittleness, and posts a comment directly on the PR.
 
 See `examples/review-locators.js` for the implementation.
 

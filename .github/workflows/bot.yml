@@ -11,14 +11,13 @@ on:
         required: true
         default: 'Run the smoke test suite and report results'
       model:
-        description: 'LLM model to use'
+        description: 'Local Ollama model to use'
         type: choice
         options:
-          - anthropic/claude-opus-4-5
-          - anthropic/claude-sonnet-4-5
-          - openai/gpt-4o
-          - google/gemini-2.0-flash-001
-        default: anthropic/claude-sonnet-4-5
+          - llama3.1
+          - llama3.2
+          - qwen2.5
+        default: llama3.1
       log_level:
         description: 'Log level'
         type: choice
@@ -45,10 +44,18 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Local model server — no cloud LLM key needed. Runs on CPU in CI (slow).
+      - name: Install Ollama and pull model
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          ollama serve &
+          sleep 5
+          ollama pull "${{ github.event.inputs.model || 'llama3.1' }}"
+
       - name: Run AI agent against LambdaTest
         run: |
           TASK="${{ github.event.inputs.task || 'Run the nightly smoke test suite and report results' }}"
-          MODEL="${{ github.event.inputs.model || 'anthropic/claude-sonnet-4-5' }}"
+          MODEL="${{ github.event.inputs.model || 'llama3.1' }}"
           LOG_LEVEL="${{ github.event.inputs.log_level || 'info' }}"
 
           if [ "$LOG_LEVEL" = "debug" ]; then
@@ -57,8 +64,9 @@ jobs:
             pnpm bot -- --task "$TASK" --model "$MODEL"
           fi
         env:
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Ollama's OpenAI-compatible endpoint; key is a placeholder (ignored).
+          LLM_BASE_URL: http://localhost:11434/v1
+          OPEN_ROUTER_API_KEY: ollama
           LT_USERNAME: ${{ secrets.LT_USERNAME }}
           LT_ACCESS_KEY: ${{ secrets.LT_ACCESS_KEY }}
           LT_APP_URL: ${{ secrets.LT_APP_URL }}
