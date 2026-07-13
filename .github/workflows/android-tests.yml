@@ -47,7 +47,22 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
-      - name: Run Android tests
+      # Ollama must be up BEFORE the emulator step so self-healing (which runs
+      # INSIDE that step) can reach it. Local models run on CPU in CI (slow).
+      - name: Cache Ollama model
+        uses: actions/cache@v4
+        with:
+          path: ~/.ollama/models
+          key: ollama-llama3.1
+
+      - name: Install Ollama and pull model
+        run: |
+          curl -fsSL https://ollama.com/install.sh | sh
+          ollama serve &
+          sleep 5
+          ollama pull llama3.1
+
+      - name: Run Android tests (heal on failure)
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 34
@@ -56,9 +71,11 @@ jobs:
           avd-name: test_avd
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           disable-animations: true
-          script: pnpm test
+          # Heal INSIDE the emulator action: only here are adb, the live DOM dump,
+          # and the `pnpm test` retry able to see a running device. The step's
+          # outcome reflects the POST-heal result (green if healing recovered).
+          script: pnpm test || node .github/scripts/heal-and-retry.js
         env:
-          # WDIO specs are deterministic; these only matter if a spec triggers the agent.
           LLM_BASE_URL: http://localhost:11434/v1
           LLM_MODEL: llama3.1
         continue-on-error: true
@@ -74,27 +91,6 @@ jobs:
             screen-*.png
             allure-results/
           retention-days: 7
-
-      # Local models run on CPU in CI (no GPU), so inference is slow.
-      - name: Cache Ollama model
-        uses: actions/cache@v4
-        with:
-          path: ~/.ollama/models
-          key: ollama-llama3.1
-
-      - name: Install Ollama and pull model
-        run: |
-          curl -fsSL https://ollama.com/install.sh | sh
-          ollama serve &
-          sleep 5
-          ollama pull llama3.1
-
-      - name: Self-heal failing tests
-        if: steps.run_tests.outcome == 'failure' && (github.event.inputs.self_heal == 'true' || github.event_name != 'workflow_dispatch')
-        run: node .github/scripts/heal-and-retry.js
-        env:
-          LLM_BASE_URL: http://localhost:11434/v1
-          LLM_MODEL: llama3.1
 
       - name: Analyse failures and open issue
         if: steps.run_tests.outcome == 'failure' && github.ref == 'refs/heads/main'
