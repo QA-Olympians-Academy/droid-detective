@@ -13,6 +13,32 @@ const path = require('path');
 const { execSync } = require('child_process');
 const { OpenAI } = require('openai');
 
+// TypeScript is a dev dependency; used to validate that a patch keeps the file
+// parseable. If it isn't resolvable, we fall back to the selector-shape check.
+let ts;
+try { ts = require('typescript'); } catch { ts = null; }
+
+// A patch is applied inside a `$('<selector>')` string literal. Reject anything
+// that would break that literal (quotes, newlines, backticks) or is empty.
+function isSafeSelector(sel) {
+  return typeof sel === 'string' && sel.length > 0 && !/['\n\r`]/.test(sel);
+}
+
+// Would the patched source still parse as TypeScript? transpileModule reports
+// SYNTACTIC diagnostics only, so it catches a malformed selector (e.g. TS1005)
+// without failing on the project's runtime-only type setup.
+function keepsParsing(source) {
+  if (!ts) return true; // can't check — rely on isSafeSelector
+  const out = ts.transpileModule(source, {
+    reportDiagnostics: true,
+    compilerOptions: { target: ts.ScriptTarget.ES2020 },
+  });
+  return !(out.diagnostics && out.diagnostics.length > 0);
+}
+
+// Dry-run: propose + validate patches but do not write files or retry tests.
+const DRY_RUN = process.env.HEAL_DRY_RUN === '1' || process.env.HEAL_DRY_RUN === 'true';
+
 // Ollama exposes an OpenAI-compatible endpoint; no real key is needed.
 const client = new OpenAI({
   baseURL: process.env.LLM_BASE_URL || 'http://localhost:11434/v1',
@@ -119,6 +145,12 @@ ${hierarchySection}
 ${pageObjectsText}
 
 For each failing selector, suggest the corrected selector based on the UI hierarchy (if available) or your best judgement.
+
+Selector format rules (the value is inserted into a WebdriverIO \`$('...')\` call, so it MUST be a valid single-quoted string):
+- STRONGLY prefer an accessibility id written as \`~name\` (e.g. \`~Carousel-screen\`) — this is the most robust and always safe.
+- NEVER put a single quote (') in the selector — it would break the string literal. If you use XPath, wrap attribute values in DOUBLE quotes, e.g. \`//*[@content-desc="Carousel"]\`.
+- No newlines, backticks, or leading/trailing spaces. The selector must be one line.
+
 Return ONLY a JSON array like:
 [
   {
@@ -153,22 +185,46 @@ Do not include any prose outside the JSON array.`;
   }
 }
 
-function applyPatches(patches, pageObjects) {
+// Validate + apply each patch. A patch is rejected (never written) if the file
+// or selector is missing, the new selector is malformed, or the resulting file
+// would no longer parse — so a bad model suggestion can't corrupt a page object
+// or break the build. In dry-run mode nothing is written; results are reported.
+function applyPatches(patches, pageObjects, failingSelectors) {
   let applied = 0;
   for (const patch of patches) {
+    const label = `${patch.file}: "${patch.oldSelector}" → "${patch.newSelector}"`;
     const filePath = path.join(PAGE_OBJECTS_DIR, patch.file);
+
     if (!fs.existsSync(filePath)) {
-      console.warn(`File not found: ${patch.file} — skipping patch`);
+      console.warn(`✗ skip (file not found): ${patch.file}`);
+      continue;
+    }
+    // Only ever touch selectors that ACTUALLY failed — never "fix" a working one.
+    if (!failingSelectors.has(patch.oldSelector)) {
+      console.warn(`✗ reject (not a detected failure — refusing to modify a working selector): ${label}`);
       continue;
     }
     const content = fs.readFileSync(filePath, 'utf8');
     if (!content.includes(patch.oldSelector)) {
-      console.warn(`Selector "${patch.oldSelector}" not found in ${patch.file} — skipping`);
+      console.warn(`✗ skip (old selector not present): ${label}`);
+      continue;
+    }
+    if (!isSafeSelector(patch.newSelector)) {
+      console.warn(`✗ reject (malformed selector — would break the string literal): ${label}`);
       continue;
     }
     const updated = content.replaceAll(patch.oldSelector, patch.newSelector);
-    fs.writeFileSync(filePath, updated, 'utf8');
-    console.log(`Patched ${patch.file}: "${patch.oldSelector}" → "${patch.newSelector}" (${patch.reason})`);
+    if (!keepsParsing(updated)) {
+      console.warn(`✗ reject (patch breaks TypeScript compilation): ${label}`);
+      continue;
+    }
+
+    if (DRY_RUN) {
+      console.log(`✓ valid (dry-run, not written): ${label} — ${patch.reason}`);
+    } else {
+      fs.writeFileSync(filePath, updated, 'utf8');
+      console.log(`✓ patched ${label} (${patch.reason})`);
+    }
     applied++;
   }
   return applied;
@@ -185,6 +241,7 @@ async function main() {
   }
 
   console.log(`Found ${failures.length} selector failure(s)`);
+  const failingSelectors = new Set(failures.map(f => f.selector));
   const uiHierarchy = getUiHierarchy();
   const pageObjects = readPageObjects();
 
@@ -196,7 +253,14 @@ async function main() {
     process.exit(1);
   }
 
-  const applied = applyPatches(patches, pageObjects);
+  if (DRY_RUN) {
+    console.log(`\n🔍 DRY RUN — validating ${patches.length} proposed patch(es), no files written:`);
+    const valid = applyPatches(patches, pageObjects, failingSelectors);
+    console.log(`\n${valid} of ${patches.length} proposed patch(es) are valid and would be applied.`);
+    process.exit(valid > 0 ? 0 : 1);
+  }
+
+  const applied = applyPatches(patches, pageObjects, failingSelectors);
   console.log(`Applied ${applied} patch(es)`);
 
   if (applied > 0) {
