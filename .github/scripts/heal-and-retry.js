@@ -313,7 +313,12 @@ function selectorTargetInDom(selector, dom) {
 function applyPatches(patches, pageObjects, failingSelectors, dom) {
   let applied = 0;
   for (const patch of patches) {
-    const label = `${patch.file}: "${patch.oldSelector}" → "${patch.newSelector}"`;
+    // Small models often emit XPath with SINGLE quotes (//*[@id='X']) — that's
+    // valid XPath but would break the single-quoted `$('...')` literal. Double
+    // quotes work fine inside `$('...')`, so normalize rather than reject an
+    // otherwise-correct selector purely for quote style.
+    const newSelector = patch.newSelector.replace(/'/g, '"');
+    const label = `${patch.file}: "${patch.oldSelector}" → "${newSelector}"`;
     const filePath = path.join(PAGE_OBJECTS_DIR, patch.file);
 
     if (!fs.existsSync(filePath)) {
@@ -330,15 +335,15 @@ function applyPatches(patches, pageObjects, failingSelectors, dom) {
       console.warn(`✗ skip (old selector not present): ${label}`);
       continue;
     }
-    if (!isSafeSelector(patch.newSelector)) {
+    if (!isSafeSelector(newSelector)) {
       console.warn(`✗ reject (malformed selector — would break the string literal): ${label}`);
       continue;
     }
-    if (!selectorTargetInDom(patch.newSelector, dom)) {
+    if (!selectorTargetInDom(newSelector, dom)) {
       console.warn(`✗ reject (target not in captured DOM — likely a hallucinated value): ${label}`);
       continue;
     }
-    const updated = content.replaceAll(patch.oldSelector, patch.newSelector);
+    const updated = content.replaceAll(patch.oldSelector, newSelector);
     if (!keepsParsing(updated)) {
       console.warn(`✗ reject (patch breaks TypeScript compilation): ${label}`);
       continue;
