@@ -113,7 +113,10 @@ Do not include any prose outside the JSON array.`;
   }
 
   try {
-    return JSON.parse(jsonMatch[0]);
+    // Local models (e.g. llama3.1) often emit trailing commas — strip them
+    // before parsing so a valid-but-loose array still applies.
+    const cleaned = jsonMatch[0].replace(/,(\s*[\]}])/g, '$1');
+    return JSON.parse(cleaned);
   } catch (e) {
     console.warn('Failed to parse model response as JSON:', e.message);
     return [];

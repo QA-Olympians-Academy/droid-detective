@@ -221,17 +221,18 @@ Goal: "Verify login works with valid credentials"
 
 ```typescript
 while (!done && steps < MAX_STEPS) {
-    const response = await claude.messages.create({
+    const res = await llm.chat.completions.create({   // Ollama, OpenAI-compatible
         model: 'llama3.1',
         tools: appiumTools,          // getPageSource, tap, type, assert…
         messages: conversationHistory
     })
+    const msg = res.choices[0].message
 
-    if (response.stop_reason === 'end_turn') {
+    if (!msg.tool_calls) {
         done = true
     } else {
-        const result = await dispatchTool(response.tool_use)
-        conversationHistory.push(assistantTurn, toolResultTurn)
+        const result = await dispatchTool(msg.tool_calls[0])
+        conversationHistory.push(msg, toolResultTurn)
     }
 }
 ```
@@ -950,7 +951,7 @@ Log `LOW` confidence actions as warnings — they're the selectors most likely t
 // analyse-failures.js
 const log = fs.readFileSync('appium.log', 'utf8').slice(-12000)
 
-const { content } = await client.messages.create({
+const res = await client.chat.completions.create({   // Ollama, OpenAI-compatible
     model: 'llama3.1',
     messages: [{ role: 'user', content:
         `Mobile suite failed. Log:\n${log}\n\n` +
@@ -958,9 +959,10 @@ const { content } = await client.messages.create({
         `## Error details\n## Suggested fix`
     }]
 })
+const body = res.choices[0].message.content
 
 execSync(`gh issue create --title "CI failure ${date}" \
-  --body "${content[0].text}" --label "test-failure,automated"`)
+  --body "${body}" --label "test-failure,automated"`)
 ```
 
 ---

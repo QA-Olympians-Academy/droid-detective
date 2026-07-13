@@ -454,7 +454,7 @@ Fix: detect and dismiss the dialog, then continue
 Test fails: selector not found
       ├── Step 1: Parse appium.log → extract failing selectors
       ├── Step 2: adb shell uiautomator dump → get live DOM
-      ├── Step 3: Send to Claude → returns JSON patch array
+      ├── Step 3: Send to the local model → returns JSON patch array
       ├── Step 4: Apply patches to page object files
       └── Step 5: pnpm test retry
 ```

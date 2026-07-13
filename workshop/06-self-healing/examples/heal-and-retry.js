@@ -78,7 +78,9 @@ Return only the JSON array — no prose.`,
 
   const text = response.choices[0]?.message?.content || '';
   const match = text.match(/\[[\s\S]*\]/);
-  return match ? JSON.parse(match[0]) : [];
+  if (!match) return [];
+  // Local models (e.g. llama3.1) often emit trailing commas — strip before parsing.
+  return JSON.parse(match[0].replace(/,(\s*[\]}])/g, '$1'));
 }
 
 // Apply patches to page object files
