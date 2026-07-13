@@ -163,7 +163,13 @@ Selector STRING rules (the value goes inside \`$('...')\`, a single-quoted JS st
 Worked example — failing \`~Carousel\`; the hierarchy contains \`<android.view.ViewGroup resource-id="Carousel" ...>\` and no content-desc="Carousel":
   correct → newSelector = \`//*[@resource-id="Carousel"]\`   (WRONG: \`//*[@content-desc='Carousel']\`)
 
-Return ONLY a JSON array of objects { "file", "oldSelector", "newSelector", "reason" } — no prose outside the array.`;
+OUTPUT FORMAT — for EACH selector to fix, output exactly these four lines:
+FILE: <page object filename, e.g. swipe.page.ts>
+OLD: <the failing selector, copied verbatim, e.g. ~Carousel>
+NEW: <the corrected selector, e.g. //*[@resource-id="Carousel"]>
+REASON: <short reason>
+Separate multiple fixes with a line containing only three dashes: ---
+Output NOTHING else — no JSON, no code fences, no quotes around values, no prose. (This plain format avoids JSON quote-escaping problems.)`;
 
 async function askModelToHeal(failures, uiHierarchy, pageObjects) {
   const pageObjectsText = Object.entries(pageObjects)
@@ -183,7 +189,7 @@ ${hierarchySection}
 ## Page Object files
 ${pageObjectsText}
 
-Return the JSON array of patches (one entry per failing selector).`;
+Output one FILE/OLD/NEW/REASON block per failing selector, in the format described.`;
 
   const response = await client.chat.completions.create({
     model: MODEL,
@@ -194,21 +200,29 @@ Return the JSON array of patches (one entry per failing selector).`;
   });
 
   const text = response.choices[0]?.message?.content || '';
-  const jsonMatch = text.match(/\[[\s\S]*\]/);
-  if (!jsonMatch) {
-    console.warn('Model did not return a JSON array — no patches applied');
-    return [];
+  const patches = parsePatches(text);
+  if (patches.length === 0) {
+    console.warn('Model did not return any parseable FILE/OLD/NEW blocks. Raw output:');
+    console.warn('----\n' + text.slice(0, 600) + '\n----');
   }
+  return patches;
+}
 
-  try {
-    // Local models (e.g. llama3.1) often emit trailing commas — strip them
-    // before parsing so a valid-but-loose array still applies.
-    const cleaned = jsonMatch[0].replace(/,(\s*[\]}])/g, '$1');
-    return JSON.parse(cleaned);
-  } catch (e) {
-    console.warn('Failed to parse model response as JSON:', e.message);
-    return [];
+// Parse the model's plain FILE/OLD/NEW/REASON blocks (separated by `---`). This
+// format carries no quotes of its own, so selectors containing double quotes
+// (valid XPath) survive intact — unlike JSON, which small models fail to escape.
+function parsePatches(text) {
+  const strip = s => s.replace(/^\s*[`'"]+|[`'"]+\s*$/g, '').trim();
+  const patches = [];
+  for (const block of text.split(/^\s*-{3,}\s*$/m)) {
+    const grab = re => { const m = block.match(re); return m ? strip(m[1]) : ''; };
+    const file = grab(/^\s*FILE:\s*(.+)$/m);
+    const oldSelector = grab(/^\s*OLD:\s*(.+)$/m);
+    const newSelector = grab(/^\s*NEW:\s*(.+)$/m);
+    const reason = grab(/^\s*REASON:\s*(.+)$/m) || 'healed';
+    if (file && oldSelector && newSelector) patches.push({ file, oldSelector, newSelector, reason });
   }
+  return patches;
 }
 
 // Validate + apply each patch. A patch is rejected (never written) if the file
