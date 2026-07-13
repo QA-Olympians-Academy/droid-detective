@@ -6,7 +6,7 @@
     "test": "wdio run droid/wdio.conf.ts",
     "test:android": "wdio run droid/wdio.conf.ts --capabilities.0.platformName=Android",
     "appium": "appium",
-    "appium:install-driver": "appium driver install uiautomator2",
+    "appium:install-driver": "appium driver list --installed 2>&1 | grep -q uiautomator2 || appium driver install uiautomator2",
     "claw": "appclaw",
     "claw:explore": "appclaw --explore",
     "claw:play": "appclaw --playground",

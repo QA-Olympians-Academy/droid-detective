@@ -37,6 +37,14 @@ jobs:
       - name: Install Appium driver
         run: pnpm appium:install-driver
 
+      # 5b. apps/*.apk is git-ignored — fetch the WebdriverIO demo app for the run.
+      - name: Download demo app
+        run: |
+          mkdir -p apps
+          curl -L -o apps/demo.apk \
+            "$(curl -s https://api.github.com/repos/webdriverio/native-demo-app/releases/latest | grep -o 'https://[^"]*\.apk')"
+          unzip -l apps/demo.apk >/dev/null && echo "✓ apps/demo.apk ready"
+
       # 6. Enable KVM for hardware-accelerated emulation (Ubuntu only)
       - name: Enable KVM
         run: |

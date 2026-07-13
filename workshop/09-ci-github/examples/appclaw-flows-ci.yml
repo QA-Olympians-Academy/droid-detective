@@ -33,13 +33,21 @@ jobs:
           node-version: '20'
           cache: 'pnpm'
 
-      # 3. Install project dependencies (includes appclaw)
+      # 3. Install project dependencies (appclaw is a CLI, installed globally below)
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # 4. Install AppClaw globally if not bundled in project
+      # 4. Install the AppClaw CLI globally (pinned)
       - name: Install AppClaw CLI
-        run: npm install -g appclaw
+        run: npm install -g appclaw@1.9.3
+
+      # 4b. apps/*.apk is git-ignored — fetch the WebdriverIO demo app for the run.
+      - name: Download demo app
+        run: |
+          mkdir -p apps
+          curl -L -o apps/demo.apk \
+            "$(curl -s https://api.github.com/repos/webdriverio/native-demo-app/releases/latest | grep -o 'https://[^"]*\.apk')"
+          unzip -l apps/demo.apk >/dev/null && echo "✓ apps/demo.apk ready"
 
       # 5. Enable KVM for hardware-accelerated emulation
       - name: Enable KVM
@@ -135,7 +143,15 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Install AppClaw CLI
-        run: npm install -g appclaw
+        run: npm install -g appclaw@1.9.3
+
+      # apps/*.apk is git-ignored — fetch the WebdriverIO demo app for the run.
+      - name: Download demo app
+        run: |
+          mkdir -p apps
+          curl -L -o apps/demo.apk \
+            "$(curl -s https://api.github.com/repos/webdriverio/native-demo-app/releases/latest | grep -o 'https://[^"]*\.apk')"
+          unzip -l apps/demo.apk >/dev/null && echo "✓ apps/demo.apk ready"
 
       # Local model server for the explorer — no cloud LLM key needed.
       # Runs on CPU in CI, so exploration is slower than on a GPU.
