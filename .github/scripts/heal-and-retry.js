@@ -191,21 +191,25 @@ ${pageObjectsText}
 
 Output one FILE/OLD/NEW/REASON block per failing selector, in the format described.`;
 
-  const response = await client.chat.completions.create({
-    model: MODEL,
-    messages: [
-      { role: 'system', content: HEAL_SYSTEM_PROMPT },
-      { role: 'user', content: prompt },
-    ],
-  });
-
-  const text = response.choices[0]?.message?.content || '';
-  const patches = parsePatches(text);
-  if (patches.length === 0) {
-    console.warn('Model did not return any parseable FILE/OLD/NEW blocks. Raw output:');
-    console.warn('----\n' + text.slice(0, 600) + '\n----');
+  // Small local models are non-deterministic about output format — retry a few
+  // times until we get parseable FILE/OLD/NEW blocks.
+  const MAX_ATTEMPTS = 3;
+  let lastText = '';
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const response = await client.chat.completions.create({
+      model: MODEL,
+      messages: [
+        { role: 'system', content: HEAL_SYSTEM_PROMPT },
+        { role: 'user', content: prompt },
+      ],
+    });
+    lastText = response.choices[0]?.message?.content || '';
+    const patches = parsePatches(lastText);
+    if (patches.length > 0) return patches;
+    console.warn(`Attempt ${attempt}/${MAX_ATTEMPTS}: no parseable FILE/OLD/NEW blocks${attempt < MAX_ATTEMPTS ? ' — retrying' : ''}`);
   }
-  return patches;
+  console.warn('Model never returned a parseable patch. Last raw output:\n----\n' + lastText.slice(0, 500) + '\n----');
+  return [];
 }
 
 // Parse the model's plain FILE/OLD/NEW/REASON blocks (separated by `---`). This
