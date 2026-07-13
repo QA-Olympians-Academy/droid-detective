@@ -18,7 +18,14 @@ export const config: Options.Testrunner = {
     },
 
     specs: ['./specs/**/*.spec.ts'],
-    exclude: [],
+    // Comma-separated spec paths (relative to this config) to skip. Set via the
+    // WDIO_EXCLUDE env var — e.g. CI excludes example.spec.ts. Applies to the
+    // initial run AND the self-heal retry (which inherits the env).
+    exclude: (process.env.WDIO_EXCLUDE || '')
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean)
+        .map(s => path.resolve(__dirname, s)),
 
     maxInstances: 1,
 

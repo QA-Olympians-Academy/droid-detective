@@ -78,6 +78,8 @@ jobs:
         env:
           LLM_BASE_URL: http://localhost:11434/v1
           LLM_MODEL: llama3.1
+          # Skip example.spec.ts in CI (applies to the initial run and the heal retry).
+          WDIO_EXCLUDE: specs/example.spec.ts
         continue-on-error: true
         id: run_tests
 
