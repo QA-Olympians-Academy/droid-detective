@@ -11,6 +11,7 @@ droid-detective provides two complementary things:
 
 The goal is to demonstrate how an AI agent can reduce the friction of writing mobile tests by handling the tedious part: finding the right selectors.
 
+Test PR image
 ---
 
 ## Prerequisites
