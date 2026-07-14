@@ -23,7 +23,8 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          # appclaw's deps (ai-sdk-ollama, pipenet) require node >=22.
+          node-version: '22'
           cache: 'pnpm'
 
       - name: Install dependencies

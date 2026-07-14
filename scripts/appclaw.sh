@@ -20,6 +20,8 @@ BIN=".appclaw-cli/node_modules/.bin/appclaw"
 if [ ! -x "$BIN" ]; then
   echo "Installing appclaw into .appclaw-cli (first run)…" >&2
   mkdir -p .appclaw-cli
+  # The override lets `npm install` succeed despite df-vision@1.1.79 being
+  # unpublished — it resolves df-vision to our stub instead.
   cat > .appclaw-cli/package.json <<'JSON'
 {
   "name": "appclaw-runner",
@@ -29,6 +31,17 @@ if [ ! -x "$BIN" ]; then
 }
 JSON
   ( cd .appclaw-cli && npm install --no-audit --no-fund )
+fi
+
+# npm materializes the file: override as a SYMLINK, which Node's ESM loader fails
+# to resolve on some npm/node versions (CI: "Cannot find package 'df-vision'").
+# Force a real copy so `import … from 'df-vision'` always resolves.
+DEST=".appclaw-cli/node_modules/df-vision"
+if [ ! -f "$DEST/index.js" ] || [ -L "$DEST" ]; then
+  echo "Materializing df-vision stub into node_modules…" >&2
+  rm -rf "$DEST"
+  mkdir -p "$DEST"
+  cp tools/df-vision-stub/package.json tools/df-vision-stub/index.js "$DEST/"
 fi
 
 # Defaults for this repo; respect anything already exported.
