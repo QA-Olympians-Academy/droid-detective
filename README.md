@@ -4,6 +4,8 @@ Workshop for Agentic Mobile Test Automation — a TypeScript framework combining
 
 ## What is this?
 
+Test PR
+
 droid-detective provides two complementary things:
 
 1. **A conventional test suite** — Page Object Model tests for an Android app, written in TypeScript and run via WebdriverIO + Appium.
