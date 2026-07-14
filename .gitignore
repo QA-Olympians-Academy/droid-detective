@@ -8,3 +8,4 @@ appium.log
 *.pptx
 dom-snapshots/
 .appclaw-cli/
+.appclaw/runs/
