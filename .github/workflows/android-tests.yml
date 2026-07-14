@@ -24,7 +24,7 @@ on:
 # comments on PRs. Without this the token is read-only and `gh issue create`
 # fails with "Resource not accessible by integration".
 permissions:
-  contents: read
+  contents: write        # self-heal commits the patched selectors back to the PR branch
   issues: write
   pull-requests: write
 
@@ -40,7 +40,12 @@ jobs:
     timeout-minutes: 60
 
     steps:
+      # Check out the PR HEAD BRANCH (not the detached merge ref) with full
+      # history, so the self-heal step can commit its patch and push it back.
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref || github.ref }}
+          fetch-depth: 0
 
       - uses: pnpm/action-setup@v4   # version comes from package.json "packageManager"
 
@@ -115,6 +120,40 @@ jobs:
             screen-*.png
             allure-results/
           retention-days: 7
+
+      # If self-healing patched a page object, commit it back to the PR branch so
+      # the fix lands in the PR for humans (and the reviewer below) to evaluate.
+      # Same-repo PRs only (fork PRs get a read-only token and can't push).
+      - name: Commit & push healed selectors to the PR
+        id: heal_push
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          if [ -n "$(git status --porcelain droid/pageobjects)" ]; then
+            git config user.name  "droid-heal-bot"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add droid/pageobjects
+            git commit -m "fix(heal): auto-patch broken selectors"
+            git push origin HEAD:${{ github.head_ref }}
+            echo "pushed=true" >> "$GITHUB_OUTPUT"
+            echo "✅ Pushed healed selectors to ${{ github.head_ref }}"
+          else
+            echo "pushed=false" >> "$GITHUB_OUTPUT"
+            echo "No healed selector changes to push."
+          fi
+
+      # Review the selectors the healer just pushed. A GITHUB_TOKEN push does NOT
+      # re-trigger CI, so we run the reviewer here in the same run, diffing the
+      # heal commit itself: HEAD~1 (pre-heal) .. HEAD (heal).
+      - name: Review the healed selectors
+        if: steps.heal_push.outputs.pushed == 'true'
+        run: node .github/scripts/review-locators.js
+        env:
+          LLM_BASE_URL: http://localhost:11434/v1
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          BASE_SHA: HEAD~1
+          HEAD_SHA: HEAD
 
       - name: Analyse failures and open issue
         if: steps.run_tests.outcome == 'failure' && github.ref == 'refs/heads/main'
