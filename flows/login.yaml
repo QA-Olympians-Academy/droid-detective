@@ -1,0 +1,27 @@
+appId: com.wdiodemoapp
+name: Login — WDIO demo app happy path
+description: Logs in with valid credentials and verifies the success message. Mirrors the login happy-path in droid/specs/example.spec.ts.
+platform: android
+---
+# The WDIO demo app exposes accessibility ids (content-desc) that AppClaw matches
+# by label: the nav tabs (Login), the login screen (Login-screen), the input
+# fields (input-email / input-password) and the submit button (button-LOGIN).
+# Credentials are the app's PUBLIC demo credentials — not real secrets.
+setup:
+  - launchApp
+  - waitUntil: "Login"
+
+steps:
+  - tap: "Login"
+  - waitUntil: "Login-screen"
+  - tap: "input-email"
+  - type: "alice@example.com"
+  - tap: "input-password"
+  - type: "10203040"
+  - tap: "button-LOGIN"
+  # Give the success alert time to render on a slow CI emulator.
+  - wait: 2
+
+assertions:
+  # Successful login raises an alert whose text contains "logged in".
+  - assert: "logged in"
