@@ -17,8 +17,9 @@ const fs = require('fs')
 const path = require('path')
 
 const ROOT = path.resolve(__dirname, '..')
-const OUT  = path.join(ROOT, 'workshop-presentation.pptx')
-const SRC  = path.join(ROOT, 'PRESENTATION.md')
+// Optional CLI overrides: node generate-slides.js [source.md] [out.pptx]
+const SRC  = path.resolve(ROOT, process.argv[2] || 'PRESENTATION.md')
+const OUT  = path.resolve(ROOT, process.argv[3] || 'workshop-presentation.pptx')
 
 // ── Design tokens ────────────────────────────────────────────────────────────
 
