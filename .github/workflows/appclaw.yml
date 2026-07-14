@@ -61,19 +61,10 @@ jobs:
           avd-name: appclaw_avd
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           disable-animations: true
-          # appclaw usage is `appclaw --flow <file.yaml>` (the file is the value of
-          # --flow; there is no --file option). scripts/appclaw.sh execs the CLI
-          # installed above; APP_PATH/DEVICE_UDID come from the step env below.
-          script: |
-            if [ -n "${{ github.event.inputs.flow }}" ]; then
-              bash scripts/appclaw.sh --flow "flows/${{ github.event.inputs.flow }}"
-            else
-              for flow in flows/*.yaml flows/*.yml; do
-                [ -f "$flow" ] || continue
-                echo "Running flow: $flow"
-                bash scripts/appclaw.sh --flow "$flow"
-              done
-            fi
+          # Single-line invocation: the emulator-runner action mangles multi-line
+          # shell (if/for) blocks, so the loop logic lives in scripts/run-flows.sh.
+          # Empty input → run all flows/*. APP_PATH/DEVICE_UDID come from step env.
+          script: bash scripts/run-flows.sh "${{ github.event.inputs.flow }}"
         env:
           # YAML flows are deterministic (zero LLM calls). These only apply if a
           # dom-agent fallback is invoked — pointed at a local Ollama model, no cloud key.
