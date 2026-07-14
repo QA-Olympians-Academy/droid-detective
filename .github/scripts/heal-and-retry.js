@@ -368,6 +368,33 @@ function applyPatches(patches, pageObjects, failingSelectors, dom) {
   return applied;
 }
 
+// Deterministic fallback — derive the fix straight from the captured DOM, no
+// model. Used when the LLM produces nothing usable (server crash/OOM, or every
+// suggestion rejected as a hallucination), which happens under CI memory
+// pressure. A failing `~X` means accessibility id X wasn't found; if the DOM has
+// a node with resource-id="X" (or text="X"), the label moved there — build that
+// selector directly. It can't hallucinate (it only emits values literally
+// present in the DOM) or crash (no inference). Handles accessibility-id failures
+// (the common case); xpath failures are left to the model.
+function deterministicPatches(failures, pageObjects, dom) {
+  if (!dom) return [];
+  const patches = [];
+  for (const { selector } of failures) {
+    const acc = selector.match(/^~(.+)$/);
+    if (!acc) continue;
+    const name = acc[1];
+    let newSelector = null;
+    let via = null;
+    if (dom.includes(`resource-id="${name}"`)) { newSelector = `//*[@resource-id="${name}"]`; via = 'resource-id'; }
+    else if (dom.includes(`text="${name}"`)) { newSelector = `//*[@text="${name}"]`; via = 'text'; }
+    if (!newSelector) continue; // nothing in the DOM matches this name — can't heal it honestly
+    const file = Object.keys(pageObjects).find(f => pageObjects[f].includes(selector));
+    if (!file) continue;
+    patches.push({ file, oldSelector: selector, newSelector, reason: `deterministic: '${name}' not found as accessibility id; matched ${via}="${name}" in the DOM` });
+  }
+  return patches;
+}
+
 async function main() {
   console.log('🔧 Self-healing: reading failure log…');
   const log = readLog();
@@ -386,21 +413,30 @@ async function main() {
   const pageObjects = readPageObjects();
 
   console.log(`Asking ${MODEL} (Ollama) for healing suggestions…`);
-  const patches = await askModelToHeal(failures, uiHierarchy, pageObjects);
+  const modelPatches = await askModelToHeal(failures, uiHierarchy, pageObjects);
 
-  if (patches.length === 0) {
-    console.log('No patches suggested');
-    process.exit(1);
+  console.log(`\n${DRY_RUN ? '🔍 DRY RUN — validating' : 'Applying'} ${modelPatches.length} model patch(es):`);
+  let applied = applyPatches(modelPatches, pageObjects, failingSelectors, uiHierarchy);
+
+  // Fallback when the model gave nothing usable (crash/OOM, or all patches
+  // rejected as hallucinations): derive patches directly from the DOM.
+  if (applied === 0) {
+    const det = deterministicPatches(failures, pageObjects, uiHierarchy);
+    if (det.length) {
+      console.log(`\nModel healing yielded 0 valid patches — trying ${det.length} deterministic DOM-based patch(es):`);
+      applied = applyPatches(det, pageObjects, failingSelectors, uiHierarchy);
+    }
   }
 
   if (DRY_RUN) {
-    console.log(`\n🔍 DRY RUN — validating ${patches.length} proposed patch(es), no files written:`);
-    const valid = applyPatches(patches, pageObjects, failingSelectors, uiHierarchy);
-    console.log(`\n${valid} of ${patches.length} proposed patch(es) are valid and would be applied.`);
-    process.exit(valid > 0 ? 0 : 1);
+    console.log(`\n${applied} patch(es) are valid and would be applied.`);
+    process.exit(applied > 0 ? 0 : 1);
   }
 
-  const applied = applyPatches(patches, pageObjects, failingSelectors, uiHierarchy);
+  if (applied === 0) {
+    console.log('No patches applied (model and deterministic fallback both empty)');
+    process.exit(1);
+  }
   console.log(`Applied ${applied} patch(es)`);
 
   if (applied > 0) {

@@ -14,7 +14,11 @@ on:
       model:
         description: 'Ollama model for self-healing & failure analysis'
         type: string
-        default: qwen2.5-coder:7b
+        # A light (~2 GB) model that fits alongside the emulator on the runner —
+        # a 7B model OOMs (llama-server segfaults). The deterministic DOM-based
+        # fallback in heal-and-retry.js backstops accuracy, so model size matters
+        # less than not crashing. Pick a bigger model here only for local runs.
+        default: llama3.2:3b
 
 # GITHUB_TOKEN scopes the jobs need: the analyzer opens issues, review-locators
 # comments on PRs. Without this the token is read-only and `gh issue create`
@@ -28,7 +32,7 @@ env:
   # Model comes from the workflow_dispatch input; on pull_request runs (where the
   # input is absent) it falls back to the default. Used by the pull step, the
   # cache key, and the LLM_MODEL passed to the heal/analyse/review scripts.
-  LLM_MODEL: ${{ inputs.model || 'qwen2.5-coder:7b' }}
+  LLM_MODEL: ${{ inputs.model || 'llama3.2:3b' }}
 
 jobs:
   test:
