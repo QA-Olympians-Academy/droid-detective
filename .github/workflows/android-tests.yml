@@ -11,6 +11,10 @@ on:
         description: 'Run self-healing on failures'
         type: boolean
         default: true
+      model:
+        description: 'Ollama model for self-healing & failure analysis'
+        type: string
+        default: qwen2.5-coder:7b
 
 # GITHUB_TOKEN scopes the jobs need: the analyzer opens issues, review-locators
 # comments on PRs. Without this the token is read-only and `gh issue create`
@@ -19,6 +23,12 @@ permissions:
   contents: read
   issues: write
   pull-requests: write
+
+env:
+  # Model comes from the workflow_dispatch input; on pull_request runs (where the
+  # input is absent) it falls back to the default. Used by the pull step, the
+  # cache key, and the LLM_MODEL passed to the heal/analyse/review scripts.
+  LLM_MODEL: ${{ inputs.model || 'qwen2.5-coder:7b' }}
 
 jobs:
   test:
@@ -61,14 +71,14 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.ollama/models
-          key: ollama-llama3.1
+          key: ollama-${{ env.LLM_MODEL }}
 
       - name: Install Ollama and pull model
         run: |
           curl -fsSL https://ollama.com/install.sh | sh
           ollama serve &
           sleep 5
-          ollama pull llama3.1
+          ollama pull "$LLM_MODEL"
 
       - name: Run Android tests (heal on failure)
         uses: reactivecircus/android-emulator-runner@v2
@@ -85,7 +95,6 @@ jobs:
           script: pnpm test || node .github/scripts/heal-and-retry.js
         env:
           LLM_BASE_URL: http://localhost:11434/v1
-          LLM_MODEL: llama3.1
           # Skip example.spec.ts in CI (applies to the initial run and the heal retry).
           WDIO_EXCLUDE: specs/example.spec.ts
         continue-on-error: true
@@ -108,7 +117,6 @@ jobs:
         run: node .github/scripts/analyse-failures.js
         env:
           LLM_BASE_URL: http://localhost:11434/v1
-          LLM_MODEL: llama3.1
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
 
@@ -141,20 +149,19 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.ollama/models
-          key: ollama-llama3.1
+          key: ollama-${{ env.LLM_MODEL }}
 
       - name: Install Ollama and pull model
         run: |
           curl -fsSL https://ollama.com/install.sh | sh
           ollama serve &
           sleep 5
-          ollama pull llama3.1
+          ollama pull "$LLM_MODEL"
 
       - name: Review changed locators
         run: node .github/scripts/review-locators.js
         env:
           LLM_BASE_URL: http://localhost:11434/v1
-          LLM_MODEL: llama3.1
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
