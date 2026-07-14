@@ -14,10 +14,11 @@ setup:
 steps:
   - tap: "Login"
   - waitUntil: "Login-screen"
-  - tap: "input-email"
-  - type: "alice@example.com"
-  - tap: "input-password"
-  - type: "10203040"
+  # Target each field explicitly ("type … in <field>"). A bare `type:` writes to
+  # the focused field, and tap-to-focus doesn't reliably move between these RN
+  # inputs — both values ended up in the email field. Targeted typing sets each.
+  - type "alice@example.com" in the input-email field
+  - type "10203040" in the input-password field
   - tap: "button-LOGIN"
   # Give the success alert time to render on a slow CI emulator.
   - wait: 2

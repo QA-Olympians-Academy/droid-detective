@@ -29,26 +29,13 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # appclaw's published dependency df-vision was unpublished from npm (only a
-      # security-holder placeholder remains), so `npm i -g appclaw@<any>` fails.
-      # df-vision powers VISION mode only; YAML flows are DOM-based and never use
-      # it. Install appclaw into an isolated dir with df-vision overridden to the
-      # vendored stub (tools/df-vision-stub), then put its bin on PATH.
+      # appclaw's published dependency df-vision was unpublished from npm, so
+      # `npm i -g appclaw` fails. scripts/appclaw.sh installs it into .appclaw-cli
+      # with df-vision overridden to the vendored stub (see the script header).
+      # Running --help here installs it and fails fast (before booting the
+      # emulator) if anything is wrong.
       - name: Install AppClaw CLI
-        run: |
-          mkdir -p .appclaw-cli
-          cat > .appclaw-cli/package.json <<'JSON'
-          {
-            "name": "appclaw-runner",
-            "private": true,
-            "dependencies": { "appclaw": "1.9.3" },
-            "overrides": { "df-vision": "file:../tools/df-vision-stub" }
-          }
-          JSON
-          (cd .appclaw-cli && npm install --no-audit --no-fund)
-          echo "$PWD/.appclaw-cli/node_modules/.bin" >> "$GITHUB_PATH"
-          # Sanity: appclaw must load (stub resolves) before we boot the emulator.
-          .appclaw-cli/node_modules/.bin/appclaw --help >/dev/null && echo "✓ appclaw installed"
+        run: bash scripts/appclaw.sh --help >/dev/null && echo "✓ appclaw installed"
 
       # apps/*.apk is git-ignored — fetch the WebdriverIO demo app for the run.
       - name: Download demo app
@@ -74,15 +61,16 @@ jobs:
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           disable-animations: true
           # appclaw usage is `appclaw --flow <file.yaml>` (the file is the value of
-          # --flow; there is no --file option). appclaw is on PATH from the install step.
+          # --flow; there is no --file option). scripts/appclaw.sh execs the CLI
+          # installed above; APP_PATH/DEVICE_UDID come from the step env below.
           script: |
             if [ -n "${{ github.event.inputs.flow }}" ]; then
-              appclaw --flow "flows/${{ github.event.inputs.flow }}"
+              bash scripts/appclaw.sh --flow "flows/${{ github.event.inputs.flow }}"
             else
               for flow in flows/*.yaml flows/*.yml; do
                 [ -f "$flow" ] || continue
                 echo "Running flow: $flow"
-                appclaw --flow "$flow"
+                bash scripts/appclaw.sh --flow "$flow"
               done
             fi
         env:
