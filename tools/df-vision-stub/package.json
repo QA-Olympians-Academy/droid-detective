@@ -1,0 +1,8 @@
+{
+  "name": "df-vision",
+  "version": "1.1.79",
+  "description": "Local stub for appclaw's df-vision dependency. The real df-vision was unpublished from npm (only a security-holder placeholder remains), so `npm i appclaw` fails for every version. df-vision powers appclaw's VISION mode only; declarative YAML flows are DOM-based and never call it, so this stub lets appclaw install and run flows. It throws a clear error if vision is actually invoked.",
+  "type": "module",
+  "main": "index.js",
+  "private": true
+}

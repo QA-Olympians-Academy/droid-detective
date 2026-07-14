@@ -7,3 +7,4 @@ appium.log
 .env
 *.pptx
 dom-snapshots/
+.appclaw-cli/
