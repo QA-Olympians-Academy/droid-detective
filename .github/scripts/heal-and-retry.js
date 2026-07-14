@@ -224,29 +224,37 @@ Output one FILE/OLD/NEW/REASON block per failing selector, in the format describ
   const MAX_ATTEMPTS = 5;
   let lastText = '';
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-    const response = await client.chat.completions.create({
-      model: MODEL,
-      // Reliability + speed on a small CPU-bound model:
-      //   - temperature 0 first try (deterministic); a small bump on retries.
-      //   - response_format json_schema: Ollama constrains decoding to the exact
-      //     PATCH_SCHEMA shape, so the model can't emit prose OR wrong-keyed JSON.
-      //   - max_tokens: the patch JSON is tiny; capping output stops the model
-      //     rambling for minutes on CPU (each token is a slow CPU step in CI).
-      temperature: attempt === 1 ? 0 : 0.3,
-      max_tokens: 800,
-      response_format: {
-        type: 'json_schema',
-        json_schema: { name: 'selector_patches', strict: true, schema: PATCH_SCHEMA },
-      },
-      messages: [
-        { role: 'system', content: HEAL_SYSTEM_PROMPT },
-        { role: 'user', content: prompt },
-      ],
-    });
-    lastText = response.choices[0]?.message?.content || '';
-    const patches = parsePatches(lastText);
-    if (patches.length > 0) return patches;
-    console.warn(`Attempt ${attempt}/${MAX_ATTEMPTS}: no parseable patch in model output${attempt < MAX_ATTEMPTS ? ' — retrying' : ''}`);
+    try {
+      const response = await client.chat.completions.create({
+        model: MODEL,
+        // Reliability + speed on a small CPU-bound model:
+        //   - temperature 0 first try (deterministic); a small bump on retries.
+        //   - response_format json_schema: Ollama constrains decoding to the exact
+        //     PATCH_SCHEMA shape, so the model can't emit prose OR wrong-keyed JSON.
+        //   - max_tokens: the patch JSON is tiny; capping output stops the model
+        //     rambling for minutes on CPU (each token is a slow CPU step in CI).
+        temperature: attempt === 1 ? 0 : 0.3,
+        max_tokens: 800,
+        response_format: {
+          type: 'json_schema',
+          json_schema: { name: 'selector_patches', strict: true, schema: PATCH_SCHEMA },
+        },
+        messages: [
+          { role: 'system', content: HEAL_SYSTEM_PROMPT },
+          { role: 'user', content: prompt },
+        ],
+      });
+      lastText = response.choices[0]?.message?.content || '';
+      const patches = parsePatches(lastText);
+      if (patches.length > 0) return patches;
+      console.warn(`Attempt ${attempt}/${MAX_ATTEMPTS}: no parseable patch in model output${attempt < MAX_ATTEMPTS ? ' — retrying' : ''}`);
+    } catch (err) {
+      // The model server can die mid-request under CI memory pressure (e.g.
+      // "llama-server process has terminated: segmentation fault"). Don't abort
+      // the whole run — Ollama respawns the server, so back off briefly and retry.
+      console.warn(`Attempt ${attempt}/${MAX_ATTEMPTS}: model call failed (${err.message.split('\n')[0]})${attempt < MAX_ATTEMPTS ? ' — retrying' : ''}`);
+      if (attempt < MAX_ATTEMPTS) await new Promise(r => setTimeout(r, 5000));
+    }
   }
   console.warn('Model never returned a parseable patch. Last raw output:\n----\n' + lastText.slice(0, 500) + '\n----');
   return [];
