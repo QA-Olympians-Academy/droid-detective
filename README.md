@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/course_banner_updated.png" alt="Agentic Mobile Test Automation" width="100%">
+</p>
+
 # droid-detective
 
 Workshop for Agentic Mobile Test Automation — a TypeScript framework combining WebdriverIO, Appium, and Claude Code for AI-assisted Android UI testing.
