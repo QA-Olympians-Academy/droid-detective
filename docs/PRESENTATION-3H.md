@@ -11,7 +11,7 @@ paginate: true
 
 ## Agentic Mobile QA in Practice — 3-Hour Workshop
 
-Ioannis Papadakis · Snappi
+Ioannis Papadakis · LearnWorlds
 
 Claude Code · Appium · WebdriverIO · AppClaw · Ollama
 
@@ -266,4 +266,4 @@ The pipeline is the same loop, automated end-to-end:
 
 Questions? Let's talk — and play the locator games.
 
-Ioannis Papadakis · Snappi
+Ioannis Papadakis · LearnWorlds

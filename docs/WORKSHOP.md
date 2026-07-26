@@ -1,6 +1,6 @@
 # Test Smarter, Not Harder: Agentic Mobile QA in Practice
 
-**Speaker:** Ioannis Papadakis · Snappi  
+**Speaker:** Ioannis Papadakis · LearnWorlds  
 **Level:** Intermediate  
 **Stack:** Claude Code · Appium · WebdriverIO · AppClaw · GitHub Actions
 

@@ -38,7 +38,7 @@ style: |
 # Test Smarter, Not Harder
 # Agentic Mobile QA in Practice
 
-*Ioannis Papadakis · Snappi*
+*Ioannis Papadakis · LearnWorlds*
 *AutomationSTAR 2026 · Wednesday 4 November · 09:00–16:05*
 
 ---
@@ -48,7 +48,7 @@ style: |
 ## About Me
 
 **Ioannis Papadakis**
-Senior SDET at Snappi (Greece)
+Senior SDET at LearnWorlds (Greece)
 
 - Building mobile automation infrastructure for a fintech super-app
 - Contributor to Appium ecosystem tooling
@@ -1468,8 +1468,8 @@ Your next test suite does not have to be brittle. It can reason, adapt, and self
 
 ## Thank You
 
-**Ioannis Papadakis** · Snappi
-*i.papadakis@snappibank.com*
+**Ioannis Papadakis** · LearnWorlds
+*i.papadakis@LearnWorldsbank.com*
 
 **Repo:** `droid-detective`
 **Workshop doc:** `WORKSHOP.md`

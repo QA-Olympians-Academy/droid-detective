@@ -1,6 +1,6 @@
 # Test Smarter, Not Harder — 3-Hour Workshop
 
-**Speaker:** Ioannis Papadakis · Snappi
+**Speaker:** Ioannis Papadakis · LearnWorlds
 **Level:** Intermediate
 **Stack:** Claude Code · Appium · WebdriverIO · AppClaw · GitHub Actions
 **Format:** 3 hours · 1 break · hands-on

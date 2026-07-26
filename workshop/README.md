@@ -2,7 +2,7 @@
 ## Workshop Materials
 
 **Conference:** AutomationSTAR 2026 · Wednesday 4 November · 09:00–16:05 CET
-**Speaker:** Ioannis Papadakis · Snappi
+**Speaker:** Ioannis Papadakis · LearnWorlds
 
 ---
 

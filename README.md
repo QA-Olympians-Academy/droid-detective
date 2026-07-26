@@ -122,7 +122,7 @@ The skill instructs Claude to prefer selectors in this order:
 
 | Priority | Strategy | Example |
 |----------|----------|---------|
-| Preferred | `resourceID` | `com.snappibank.snappiapp:id/LoginButton` |
+| Preferred | `resourceID` | `com.LearnWorldsbank.LearnWorldsapp:id/LoginButton` |
 | Preferred | `accessibilityID` | `~login-button` |
 | Good | XPath by text | `//*[contains(@text, "Submit")]` |
 | Good | XPath by label | `//*[contains(@label, "Login")]` |
