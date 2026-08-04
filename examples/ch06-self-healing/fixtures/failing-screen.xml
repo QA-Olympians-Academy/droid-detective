@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  DOM of the failing screen, captured at failure time (wdio afterTest hook).
+  The app shipped a UI refactor:
+    - the Login tab's content-desc was RENAMED:  "Login-tab" → "login-tab-v2"   (Category A)
+    - the LOGIN button LOST its content-desc; the value moved to resource-id    (the classic gotcha)
+-->
+<hierarchy rotation="0">
+  <android.widget.FrameLayout bounds="[0,0][1080,2400]" package="com.saucelabs.mydemoapp.android">
+    <android.view.ViewGroup content-desc="tab-bar" bounds="[0,0][1080,168]">
+      <android.view.ViewGroup content-desc="Home-tab" clickable="true" bounds="[0,0][216,168]"/>
+      <android.view.ViewGroup content-desc="login-tab-v2" clickable="true" bounds="[432,0][648,168]"/>
+      <android.view.ViewGroup content-desc="Forms-tab" clickable="true" bounds="[648,0][864,168]"/>
+    </android.view.ViewGroup>
+    <android.widget.ScrollView scrollable="true" bounds="[0,168][1080,2400]">
+      <android.widget.EditText content-desc="input-email" resource-id="com.saucelabs.mydemoapp.android:id/et_username" text="" bounds="[40,300][1040,460]"/>
+      <android.widget.EditText content-desc="input-password" resource-id="com.saucelabs.mydemoapp.android:id/et_password" text="" bounds="[40,500][1040,660]"/>
+      <android.widget.Button resource-id="button-LOGIN" text="LOGIN" clickable="true" bounds="[40,700][1040,820]"/>
+    </android.widget.ScrollView>
+  </android.widget.FrameLayout>
+</hierarchy>

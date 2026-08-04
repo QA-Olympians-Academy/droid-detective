@@ -1,0 +1,10 @@
+2026-08-04 10:12:01:100 [HTTP] --> POST /session/aa11/element {"using":"accessibility id","value":"input-email"}
+2026-08-04 10:12:01:180 [HTTP] <-- POST /session/aa11/element 200 80 ms
+2026-08-04 10:12:02:100 [HTTP] --> POST /session/aa11/element {"using":"accessibility id","value":"Login-tab"}
+2026-08-04 10:12:02:210 [HTTP] <-- POST /session/aa11/element 404 110 ms
+2026-08-04 10:12:03:100 [HTTP] --> POST /session/aa11/element {"using":"accessibility id","value":"Login-tab"}
+2026-08-04 10:12:03:190 [HTTP] <-- POST /session/aa11/element 404 90 ms
+2026-08-04 10:12:04:100 [HTTP] --> POST /session/aa11/element {"using":"accessibility id","value":"button-LOGIN"}
+2026-08-04 10:12:04:220 [HTTP] <-- POST /session/aa11/element 404 120 ms
+2026-08-04 10:12:05:100 [HTTP] --> POST /session/aa11/element {"using":"accessibility id","value":"input-password"}
+2026-08-04 10:12:05:170 [HTTP] <-- POST /session/aa11/element 200 70 ms

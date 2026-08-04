@@ -1,0 +1,3 @@
+.healed/
+# the fixture log is test data, not a runtime log — un-ignore it (root ignores *.log)
+!fixtures/appium-failure.log
