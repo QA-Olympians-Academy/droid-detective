@@ -65,9 +65,11 @@ for ((i = 0; i < n; i++)); do
     echo "  stubbed examples/${dir}"
   done
 
-  # Hide the build tooling (the finished answers stay reachable on main).
+  # Hide the build tooling and the instructor run-book (the finished answers
+  # and facilitator notes stay reachable on main).
   git rm -rq workshop/stubs
   git rm -q workshop/build-branches.sh
+  [ -f examples/instructor.md ] && git rm -q examples/instructor.md
 
   git commit -q -m "workshop: ${branch} starter — chapters ${start_ch}+ as exercises
 
