@@ -2,16 +2,17 @@
 'use strict';
 
 /**
- * PR locator review script — workshop example.
+ * CH9 — PR LOCATOR REVIEW  (WORKSHOP EXERCISE STUB)
  *
- * On a pull request, diffs changed page object files,
- * asks a local model to flag brittle selectors, and posts a PR comment.
+ * On a pull request: diff the changed page objects, ask a local model to flag
+ * brittle selectors, post the review as a PR comment. The GitHub plumbing is
+ * provided; you implement the diff collection and the review prompt.
  *
- * The production version is at .github/scripts/review-locators.js
+ * Run locally (stage a page-object change first): node examples/ch09-agent-ci/review-locators.js
+ * Reference implementation: git checkout main -- examples/ch09-agent-ci
  */
 
 const { execSync } = require('child_process');
-const fs = require('fs');
 const https = require('https');
 const { OpenAI } = require('openai');
 
@@ -25,65 +26,25 @@ const PAGE_OBJECTS_GLOB = 'droid/pageobjects/*.ts';
 
 // Get the diff of page object files changed in this PR
 function getChangedPageObjects() {
-  const base = process.env.BASE_SHA;
-  const head = process.env.HEAD_SHA;
-
-  if (!base || !head) {
-    // Local fallback: show unstaged changes
-    try {
-      return execSync(`git diff HEAD -- ${PAGE_OBJECTS_GLOB}`, { encoding: 'utf8' });
-    } catch {
-      return null;
-    }
-  }
-
-  try {
-    return execSync(
-      `git diff ${base}..${head} -- ${PAGE_OBJECTS_GLOB}`,
-      { encoding: 'utf8' }
-    );
-  } catch {
-    return null;
-  }
+  // TODO(ch9): in CI, diff BASE_SHA..HEAD_SHA restricted to
+  // PAGE_OBJECTS_GLOB; locally (no env vars) fall back to `git diff HEAD`.
+  // Return null when git fails.
+  throw new Error('TODO(ch9): implement getChangedPageObjects');
 }
 
 // Ask a local model to review the changed selectors
 async function reviewSelectors(diff) {
-  const response = await client.chat.completions.create({
-    model: MODEL,
-    messages: [{
-      role: 'user',
-      content: `You are a mobile test automation engineer reviewing changed selectors in a pull request.
-
-Diff of changed page objects:
-\`\`\`diff
-${diff}
-\`\`\`
-
-Review the changed selectors for brittleness. For each added or modified selector, flag it if it matches any of these anti-patterns:
-
-- Index-based XPath: \`//LinearLayout[2]\`, \`//*[@index="3"]\`
-- Structural XPath: \`//android.widget.Button[1]\`
-- Bounds-based: \`bounds=[...]\`
-- Generated resource ID: contains a hash (e.g. \`id/btn_a3f2c9\`)
-- Text-based without a11y ID fallback: \`//*[@text="..."]\`
-- Empty content-desc: \`content-desc=""\`
-
-For each flag, write:
-- The selector
-- Why it is brittle
-- The recommended replacement (or "add contentDescription to the app")
-
-If no selectors are brittle, write: "✅ All changed selectors look good."
-
-Format as markdown. Keep the response under 300 words.`,
-    }],
-  });
-
-  return response.choices[0]?.message?.content || '';
+  // TODO(ch9): one chat completion. The prompt must:
+  //   - include the diff in a ```diff fence,
+  //   - name the anti-patterns to flag (index-based XPath, structural XPath,
+  //     bounds-based, generated/hashed resource ids, text-only selectors,
+  //     empty content-desc),
+  //   - ask for selector + why brittle + recommended replacement,
+  //   - request markdown under 300 words, and a ✅ line when nothing is wrong.
+  throw new Error('TODO(ch9): implement reviewSelectors');
 }
 
-// Post a review comment on the PR
+// Post a review comment on the PR (provided — degrades to stdout locally)
 function postPrComment(body) {
   return new Promise((resolve, reject) => {
     const repo = process.env.GITHUB_REPOSITORY;
@@ -97,9 +58,7 @@ function postPrComment(body) {
       return;
     }
 
-    const payload = JSON.stringify({
-      body: `## 🤖 Locator Review\n\n${body}`,
-    });
+    const payload = JSON.stringify({ body: `## 🤖 Locator Review\n\n${body}` });
     const [owner, repoName] = repo.split('/');
 
     const options = {

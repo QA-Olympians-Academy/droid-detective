@@ -1,12 +1,14 @@
+// @ts-nocheck
 /**
- * CH8 — LOGIN SPEC
+ * CH8 — LOGIN SPEC  (WORKSHOP EXERCISE STUB)
  *
- * A production-quality WebdriverIO spec generated from an agent plan: one
- * describe block per screen, independent tests, explicit assertions for both
- * the happy path and the failure path.
+ * Write the production-quality spec for your page object. Rules:
+ *   - each `it` must be runnable alone (beforeEach re-navigates),
+ *   - the failure path is a first-class test,
+ *   - the page object owns locators, the spec owns intent.
  *
- * Run it against the emulator:
- *   pnpm test -- --spec examples/ch08-e2e-demo/login.spec.ts
+ * Run: pnpm test -- --spec examples/ch08-e2e-demo/login.spec.ts
+ * Reference implementation: git checkout main -- examples/ch08-e2e-demo
  */
 
 import { $, expect } from '@wdio/globals';
@@ -19,27 +21,20 @@ describe('Login screen', () => {
   });
 
   it('should display email and password fields', async () => {
-    await expect(loginPage.emailInput).toBeDisplayed();
-    await expect(loginPage.passwordInput).toBeDisplayed();
-    await expect(loginPage.loginButton).toBeDisplayed();
+    // TODO(ch8): assert the three form elements are displayed.
   });
 
   it('should show error for wrong credentials', async () => {
-    await loginPage.login('wrong@example.com', 'wrongpassword');
-    await expect(loginPage.errorMessage).toBeDisplayed();
-    await expect(loginPage.errorMessage).toHaveText('Incorrect email or password');
+    // TODO(ch8): login with wrong credentials; assert the error message text
+    // is 'Incorrect email or password'.
   });
 
   it('should log in with valid credentials', async () => {
-    await loginPage.login('alice@example.com', '10203040');
-    // After a successful login a logged-in indicator is visible
-    const loggedIn = $('//*[contains(@text,"logged in")]');
-    await expect(loggedIn).toBeDisplayed();
+    // TODO(ch8): login with alice@example.com / 10203040; assert a logged-in
+    // indicator is visible.
   });
 
   it('should navigate to Sign Up from the login screen', async () => {
-    await loginPage.signUpButton.click();
-    const signUpTitle = $('//*[contains(@text,"Sign Up")]');
-    await expect(signUpTitle).toBeDisplayed();
+    // TODO(ch8): tap the sign-up link; assert the Sign Up screen title.
   });
 });
