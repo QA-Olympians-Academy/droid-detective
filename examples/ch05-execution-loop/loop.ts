@@ -1,14 +1,12 @@
+// @ts-nocheck
 /**
- * CH5 — THE AGENTIC EXECUTION LOOP ("Think → Act → Observe → Repeat")
+ * CH5 — THE AGENTIC EXECUTION LOOP  (WORKSHOP EXERCISE STUB)
  *
- * This is the heart of the whole workshop, distilled to its minimum:
+ * Implement Think → Act → Observe → Repeat. `tools.ts`, `llm.ts`, and
+ * `run.ts` are provided; you build the loop itself (and the executor in
+ * `executor.ts`).
  *
- *   Think   — send the conversation (goal + latest page source) to the LLM
- *   Act     — execute whichever tool calls it answered with
- *   Observe — capture the new page source, append it to the conversation
- *   Repeat  — until the model reports a verdict (or the step budget runs out)
- *
- * Distilled from `bot/ai/agent/app-agent/agent-loop.ts` + `agent-init.ts`.
+ * Reference implementation: git checkout main -- examples/ch05-execution-loop
  */
 
 import { type ChatCompletionMessageParam } from 'openai/resources';
@@ -24,39 +22,22 @@ export const runAgentLoop = async (
   systemPrompt: string,
   driver: WebdriverIO.Browser,
 ): Promise<TestResult> => {
-  const contents: ChatCompletionMessageParam[] = [
-    { role: 'system', content: systemPrompt },
-    { role: 'user', content: goal },
-    { role: 'user', content: `Here is the page source: ${await driver.getPageSource()}` },
-  ];
+  // TODO(ch5): seed the conversation — system prompt, the goal, and the
+  // CURRENT page source as the first observation.
+  const contents: ChatCompletionMessageParam[] = [];
   const actionLog: string[] = [];
 
   for (let step = 1; step <= MAX_STEPS; step++) {
-    // ── Think ──
-    const response = await think(contents, LoopTools);
-    const toolCalls = response.tool_calls;
-
-    // No tool calls → the model is done talking; treat as an inconclusive end.
-    if (!toolCalls || toolCalls.length === 0) {
-      return { success: false, message: response.content ?? 'Agent stopped without a verdict' };
-    }
-
-    console.log(`\n[ step ${step} ] ${toolCalls.length} tool call(s)`);
-
-    // Context hygiene: the model has decided — the old page source is stale
-    // and huge, so blank it before appending the assistant turn. Only the
-    // LATEST observation stays full-size in the conversation.
-    contents[contents.length - 1].content = 'Old Page Source';
-    contents.push({ role: 'assistant', tool_calls: toolCalls });
-
-    // ── Act + Observe ──
-    const verdict = await actAndObserve(toolCalls, contents, driver, actionLog);
-    actionLog.slice(-toolCalls.length).forEach((a) => console.log(`  → ${a}`));
-
-    if (verdict) {
-      console.log(`\n[ verdict ] ${verdict.success ? '✅' : '❌'} ${verdict.message}`);
-      return verdict;
-    }
+    // TODO(ch5) — one loop iteration:
+    //   THINK   — const response = await think(contents, LoopTools)
+    //   • no tool_calls?  the model is done talking → return an inconclusive
+    //     TestResult with its text.
+    //   • context hygiene: the old page source is stale and huge — overwrite
+    //     the last message's content with 'Old Page Source' BEFORE pushing
+    //     the assistant turn ({ role: 'assistant', tool_calls }).
+    //   ACT+OBSERVE — const verdict = await actAndObserve(toolCalls, contents, driver, actionLog)
+    //   • verdict returned?  the model called write_test_result → return it.
+    throw new Error('TODO(ch5): implement the Think → Act → Observe iteration');
   }
 
   return { success: false, message: `Step budget of ${MAX_STEPS} exhausted` };
