@@ -99,11 +99,15 @@ export const mobileElementActionCall = async (elementAction: ElementAction, driv
         const startY = windowSize.height * 0.7;
         const endY = windowSize.height * 0.3;
 
-        await driver.swipe({
-          direction: 'up',
-          from: { x: centerX, y: startY },
-          to: { x: centerX, y: endY },
-        });
+        // W3C actions swipe-up — `driver.swipe` only exists in WebdriverIO v9+.
+        await driver
+          .action('pointer', { parameters: { pointerType: 'touch' } })
+          .move({ x: centerX, y: startY })
+          .down()
+          .pause(100)
+          .move({ duration: 500, x: centerX, y: endY })
+          .up()
+          .perform();
         break;
       }
       default:

@@ -1,6 +1,5 @@
 {
   "compilerOptions": {
-    "ignoreDeprecations": "5.0",
     "target": "ES2020",
     "module": "commonjs",
     "lib": [
@@ -12,25 +11,24 @@
     "resolveJsonModule": true,
     "outDir": "./dist",
     "rootDir": ".",
-    "baseUrl": ".",
     "paths": {
       "@pages/*": [
-        "droid/pageobjects/*"
+        "./droid/pageobjects/*"
       ],
       "@specs/*": [
-        "droid/specs/*"
+        "./droid/specs/*"
       ],
       "@Ai/Bot/Providers/*": [
-        "bot/ai/providers/*"
+        "./bot/ai/providers/*"
       ],
       "@Ai/Bot/Agent/*": [
-        "bot/ai/agent/*"
+        "./bot/ai/agent/*"
       ],
       "@Ai/Bot/Command/*": [
-        "bot/cmd/*"
+        "./bot/cmd/*"
       ],
       "@Ai/Bot/Utils/*": [
-        "bot/utils/*"
+        "./bot/utils/*"
       ]
     },
     "typeRoots": [
@@ -49,7 +47,8 @@
   },
   "include": [
     "droid/**/*.ts",
-    "bot/**/*.ts"
+    "bot/**/*.ts",
+    "examples/**/*.ts"
   ],
   "exclude": [
     "node_modules",

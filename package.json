@@ -11,10 +11,8 @@
     "claw:explore": "bash scripts/appclaw.sh --explore",
     "claw:play": "bash scripts/appclaw.sh --playground",
     "claw:flow": "bash scripts/appclaw.sh --flow",
-    "agent:confluence": "ts-node --project scripts/tsconfig.json --transpile-only scripts/confluence-agent.ts",
     "bot": "ts-node --transpile-only bot/index.ts",
-    "bot:debug": "ts-node --transpile-only bot/index.ts --log-level debug",
-    "slides": "node scripts/generate-slides.js"
+    "bot:debug": "ts-node --transpile-only bot/index.ts --log-level debug"
   },
   "packageManager": "pnpm@10.28.0",
   "pnpm": {
@@ -37,11 +35,14 @@
     "appium-uiautomator2-driver": "^3.7.0",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
-    "typescript": "^5.4.0"
+    "typescript": "^5.4.0",
+    "webdriverio": "^8.46.0"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.90.0",
     "commander": "^14.0.3",
+    "dotenv": "^17.4.2",
+    "handlebars": "^4.7.9",
     "openai": "^4.104.0",
     "pptxgenjs": "^3.12.0"
   }

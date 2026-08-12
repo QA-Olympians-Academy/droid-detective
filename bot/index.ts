@@ -32,6 +32,7 @@ async function main() {
     user: lt_user,
     key: lt_key,
     hostname: 'mobile-hub.lambdatest.com',
+    // LambdaTest vendor capabilities ('lt:options') aren't in WDIO's types.
     capabilities: {
       'appium:bundleId': bundleId,
       'appium:newCommandTimeout': parseInt(opts.timeout as string) || 240,
@@ -57,7 +58,7 @@ async function main() {
         devicelog: true,
         appProfiling: true,
       },
-    },
+    } as WebdriverIO.Capabilities,
   });
 
   try {

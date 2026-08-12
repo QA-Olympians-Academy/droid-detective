@@ -4,6 +4,7 @@ apps/*.apk
 apps/*.ipa
 appium.log
 *.log
+**/workshop/**/*.json
 .env
 *.pptx
 dom-snapshots/
