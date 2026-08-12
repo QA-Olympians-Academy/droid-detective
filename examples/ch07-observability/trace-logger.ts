@@ -1,28 +1,26 @@
+// @ts-nocheck
 /**
- * CH7 — REASONING TRACE LOGGER
+ * CH7 — REASONING TRACE LOGGER  (WORKSHOP EXERCISE STUB)
  *
- * In agentic automation a failure can happen for many reasons — wrong action,
- * bad timing, ambiguous DOM, sound reasoning on stale state. Observability
- * turns each loop step into a traceable decision by capturing four layers
- * (Chapter 7 README): reasoning, DOM interpretation, action confidence, and a
- * report a human can read.
+ * Turn each loop step into a traceable decision: record a `TraceStep`, score
+ * its confidence, render the markdown report. The types and the report
+ * renderer are provided; you implement the scoring and the logger.
+ * `run.ts` replays a canned session through your implementation.
  *
- * This module is that capture layer: record one `TraceStep` per loop
- * iteration, score its confidence, and render the markdown report — the same
- * format as workshop/07-observability/examples/reasoning-trace-example.md.
+ * Reference implementation: git checkout main -- examples/ch07-observability
  */
 
-// ── What we capture per step ──────────────────────────────────────────────────
+// ── Types (provided — do not change) ─────────────────────────────────────────
 
 export type SelectorType = 'accessibility_id' | 'resource_id' | 'text_xpath' | 'class_xpath';
 
 export interface TraceStep {
   step: number;
-  screenDetected: string;      // which screen the agent believes it is on
-  domElements: number;         // interactable elements seen
+  screenDetected: string;
+  domElements: number;
   domElementsWithA11yId: number;
-  reasoning: string;           // the model's own "Think" text
-  action: string;              // e.g. `tap(~add-to-cart-1)`
+  reasoning: string;
+  action: string;
   selectorType: SelectorType;
   retryCount: number;
   latencyMs: number;
@@ -32,43 +30,20 @@ export type Confidence = 'HIGH' | 'MEDIUM' | 'LOW';
 
 export interface ScoredStep extends TraceStep {
   confidence: Confidence;
-  signals: string[];           // why the score is what it is — never a bare number
+  signals: string[];
 }
 
 // ── Confidence scoring ────────────────────────────────────────────────────────
-// A step is only as trustworthy as its weakest signal: selector stability,
-// accessibility coverage of the screen, and whether retries were needed.
 
 export function scoreConfidence(step: TraceStep): ScoredStep {
-  const signals: string[] = [];
-  let score = 100;
-
-  const coverage = step.domElements ? step.domElementsWithA11yId / step.domElements : 0;
-  if (coverage < 0.7) {
-    score -= 30;
-    signals.push(`a11y coverage ${Math.round(coverage * 100)}% — agent may fall back to fragile selectors`);
-  }
-
-  if (step.selectorType === 'text_xpath' || step.selectorType === 'class_xpath') {
-    score -= 40;
-    signals.push(`${step.selectorType} selector — breaks on copy/layout changes`);
-  } else if (step.selectorType === 'resource_id') {
-    score -= 15;
-    signals.push('resource-id selector — stable, but a11y id preferred');
-  }
-
-  if (step.retryCount > 0) {
-    score -= 25 * step.retryCount;
-    signals.push(`${step.retryCount} retr${step.retryCount === 1 ? 'y' : 'ies'} — flaky step candidate`);
-  }
-
-  if (step.latencyMs > 2000) {
-    score -= 10;
-    signals.push(`slow step (${step.latencyMs}ms) — possible animation/network wait`);
-  }
-
-  const confidence: Confidence = score >= 75 ? 'HIGH' : score >= 45 ? 'MEDIUM' : 'LOW';
-  return { ...step, confidence, signals };
+  // TODO(ch7): start from 100 and subtract per weak signal, pushing a
+  // human-readable reason into `signals` each time:
+  //   a11y coverage < 70%      → −30   ("agent may fall back to fragile selectors")
+  //   text/class selector      → −40   resource-id → −15
+  //   each retry               → −25   ("flaky step candidate")
+  //   latency > 2000ms         → −10
+  // Map the result: ≥75 HIGH, ≥45 MEDIUM, else LOW.
+  throw new Error('TODO(ch7): implement scoreConfidence');
 }
 
 // ── The logger ────────────────────────────────────────────────────────────────
@@ -79,29 +54,18 @@ export class TraceLogger {
   constructor(private goal: string) {}
 
   record(step: Omit<TraceStep, 'step'>): ScoredStep {
-    const scored = scoreConfidence({ ...step, step: this.steps.length + 1 });
-    this.steps.push(scored);
-    return scored;
+    // TODO(ch7): number the step (1-based), score it, store it, return it.
+    throw new Error('TODO(ch7): implement record');
   }
 
   /** The dashboard numbers: flaky steps first, they are where trust erodes. */
   summary() {
-    return {
-      totalSteps: this.steps.length,
-      byConfidence: {
-        HIGH: this.steps.filter((s) => s.confidence === 'HIGH').length,
-        MEDIUM: this.steps.filter((s) => s.confidence === 'MEDIUM').length,
-        LOW: this.steps.filter((s) => s.confidence === 'LOW').length,
-      },
-      flakySteps: this.steps.filter((s) => s.retryCount > 0 || s.confidence === 'LOW'),
-      avgLatencyMs: Math.round(
-        this.steps.reduce((sum, s) => sum + s.latencyMs, 0) / (this.steps.length || 1),
-      ),
-    };
+    // TODO(ch7): totalSteps, counts by confidence, flakySteps (any retry or
+    // LOW confidence), avgLatencyMs.
+    throw new Error('TODO(ch7): implement summary');
   }
 
-  /** Markdown in the reasoning-trace-example.md format — readable by a human,
-   *  diffable in a PR, attachable as a CI artifact. */
+  /** Markdown in the reasoning-trace-example.md format (provided). */
   toMarkdown(): string {
     const stepBlocks = this.steps.map((s) => {
       const coverage = s.domElements

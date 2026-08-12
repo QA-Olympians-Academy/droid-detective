@@ -2,12 +2,14 @@
 'use strict';
 
 /**
- * Failure analysis script — workshop example.
+ * CH9 — FAILURE ANALYSIS  (WORKSHOP EXERCISE STUB)
  *
- * Reads appium.log, asks a local model to summarise root causes,
- * and opens a structured GitHub issue via the REST API.
+ * On a red build: read appium.log, ask a local model for a structured root
+ * cause, open a GitHub issue. The GitHub plumbing is provided; you implement
+ * the log trimming and the analysis prompt.
  *
- * The production version is at .github/scripts/analyse-failures.js
+ * Run locally (needs an appium.log): node examples/ch09-agent-ci/analyse-failures.js
+ * Reference implementation: git checkout main -- examples/ch09-agent-ci
  */
 
 const fs = require('fs');
@@ -25,49 +27,22 @@ const MAX_LOG_CHARS = 12000; // fits comfortably in the local model's context
 
 // Read and trim the log so it fits in the prompt
 function readLog(logPath) {
-  if (!fs.existsSync(logPath)) return null;
-  const full = fs.readFileSync(logPath, 'utf8');
-  // Take the last MAX_LOG_CHARS — failures are at the end
-  return full.length > MAX_LOG_CHARS
-    ? '...(truncated)\n' + full.slice(-MAX_LOG_CHARS)
-    : full;
+  // TODO(ch9): return null if missing; otherwise return the LAST
+  // MAX_LOG_CHARS characters (failures are at the end), prefixed with
+  // '...(truncated)\n' when trimmed.
+  throw new Error('TODO(ch9): implement readLog');
 }
 
 // Ask a local model to produce a structured failure analysis
 async function analyseLog(log) {
-  const response = await client.chat.completions.create({
-    model: MODEL,
-    messages: [{
-      role: 'user',
-      content: `You are a mobile test automation engineer analysing a CI failure.
-
-Appium log:
-\`\`\`
-${log}
-\`\`\`
-
-Produce a GitHub issue body in markdown with exactly these sections:
-
-## Summary
-One sentence: what failed and the most likely root cause.
-
-## Failing tests
-Bullet list of test names that failed.
-
-## Error details
-The key error messages (selector not found, timeout, assertion failure) — not the full stack trace.
-
-## Suggested fix
-1–3 concrete, actionable steps an engineer can take to resolve this.
-
-Keep the total response under 400 words.`,
-    }],
-  });
-
-  return response.choices[0]?.message?.content || '';
+  // TODO(ch9): one chat completion. Ask for a GitHub issue body in markdown
+  // with EXACTLY these sections — ## Summary (one sentence, root cause),
+  // ## Failing tests (bullets), ## Error details (key errors, no stack
+  // traces), ## Suggested fix (1–3 actionable steps) — under 400 words.
+  throw new Error('TODO(ch9): implement analyseLog');
 }
 
-// Open a GitHub issue using the REST API
+// Open a GitHub issue using the REST API (provided — degrades to stdout)
 function openIssue(title, body) {
   return new Promise((resolve, reject) => {
     const repo = process.env.GITHUB_REPOSITORY; // "owner/repo"
