@@ -18,7 +18,7 @@ only on `main` — the branch build strips it from participant branches.
 pnpm install
 pnpm run appium:install-driver          # uiautomator2 driver
 ls apps/demo.apk                        # demo app in place (PLAYBOOK-3H §0.6 to fetch)
-emulator -avd workshop_avd &            # boot + verify
+emulator -avd workshop_avd &            # boot + verify (or your AVD: emulator -list-avds)
 adb devices                             # expect: emulator-5554   device
 ollama pull llama3.1 && ollama run llama3.1 ''   # pull AND warm the local model
 # AppClaw CLI is a global install — verify it, then smoke the flow:

@@ -120,6 +120,8 @@ APP_PATH=apps/demo.apk
 ### 0.8 ✅ Pre-flight smoke test (the gate — students run this and screenshot the result)
 ```bash
 # 1. boot the emulator (headless)
+#    workshop_avd is created in §0.3 — if you already have an AVD, use its name
+#    instead (`emulator -list-avds` shows what exists on your machine)
 emulator -avd workshop_avd -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect &
 adb wait-for-device
 until [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; do sleep 3; done
@@ -228,6 +230,7 @@ issue only when real selectors broke. Point to `.github/workflows/android-tests.
 | `application at '…/apps/demo.apk' does not exist` | relative app path vs cwd | already fixed — `wdio.conf.ts` resolves the APK from `__dirname` |
 | `Could not find a driver for 'UiAutomator2'` | wrong `APPIUM_HOME` | `export APPIUM_HOME=$HOME/.appium`; re-run `appium driver install uiautomator2` |
 | `driver 'uiautomator2' is already installed` | driver is a project dep too | harmless — `appium:install-driver` is idempotent |
+| `Unknown AVD name [workshop_avd]` | AVD never created (§0.3 skipped) | run the §0.3 `avdmanager create avd` one-liner, or boot an existing AVD from `emulator -list-avds` |
 | `adb: no devices/emulators found` | emulator not booted | boot it (§0.8); `adb kill-server && adb start-server` |
 | `Could not find a connected Android device in 20000ms` | Appium started before device ready | wait for `sys.boot_completed=1` before `pnpm test` |
 | Emulator dead-slow | no acceleration | Apple Silicon: use `arm64-v8a` image; Intel/Linux: enable HAXM/KVM |
