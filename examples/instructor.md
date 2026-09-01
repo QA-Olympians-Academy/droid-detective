@@ -16,7 +16,8 @@ pnpm install
 pnpm run appium:install-driver          # uiautomator2 driver
 # drop the demo app in place:
 ls apps/demo.apk
-# start + verify the emulator:
+# start + verify the emulator (list AVDs: `emulator -list-avds`; create one via
+# PLAYBOOK-3H §0.8 step 0 if the list is empty):
 emulator -avd <your-avd> &
 adb devices                             # expect: emulator-5554   device
 # local model for ch6/ch9 (and $0-cost demos):
