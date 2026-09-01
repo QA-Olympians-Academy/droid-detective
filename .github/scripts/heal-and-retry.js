@@ -44,6 +44,8 @@ const client = new OpenAI({
   baseURL: process.env.LLM_BASE_URL || 'http://localhost:11434/v1',
   apiKey: process.env.LLM_API_KEY || 'ollama',
 });
+// Default matches the workshop's local model (PLAYBOOK-3H §0.5); CI passes its
+// own smaller LLM_MODEL explicitly (see android-tests.yml).
 const MODEL = process.env.LLM_MODEL || 'llama3.1';
 
 const LOG_FILE = 'appium.log';
@@ -309,8 +311,19 @@ function selectorTargetInDom(selector, dom) {
   const acc = selector.match(/^~(.+)$/);
   if (acc) return dom.includes(`content-desc="${acc[1]}"`);
   const attrs = [...selector.matchAll(/@([\w-]+)\s*(?:=|,)\s*["']([^"']+)["']/g)];
-  if (attrs.length) return attrs.every(([, attr, val]) => dom.includes(`${attr}="${val}"`));
-  return true; // class-only xpath / unrecognized form — can't verify, allow
+  if (!attrs.length) return true; // class-only xpath / unrecognized form — can't verify, allow
+  // Class-qualified xpath (//android.widget.Foo[@a="b"]): in UiAutomator XML the
+  // node tag IS the class, so the attributes must co-occur on a tag of that
+  // class — a right-value/wrong-class selector finds nothing at runtime.
+  const cls = selector.match(/^\/\/([A-Za-z][\w.]*)\[/);
+  if (cls && cls[1] !== '*') {
+    const tagRe = new RegExp(`<${cls[1].replace(/\./g, '\\.')}\\b[^>]*>`, 'g');
+    for (const tag of dom.match(tagRe) || []) {
+      if (attrs.every(([, attr, val]) => tag.includes(`${attr}="${val}"`))) return true;
+    }
+    return false;
+  }
+  return attrs.every(([, attr, val]) => dom.includes(`${attr}="${val}"`));
 }
 
 // Validate + apply each patch. A patch is rejected (never written) if the file
@@ -318,14 +331,26 @@ function selectorTargetInDom(selector, dom) {
 // or targets an element not in the captured DOM — so a bad or hallucinated model
 // suggestion can't corrupt a page object or apply a wrong selector. In dry-run
 // mode nothing is written; results are reported.
-function applyPatches(patches, pageObjects, failingSelectors, dom) {
+function applyPatches(patches, pageObjects, failingSelectors, dom, detByOld = new Map()) {
   let applied = 0;
   for (const patch of patches) {
     // Small models often emit XPath with SINGLE quotes (//*[@id='X']) — that's
     // valid XPath but would break the single-quoted `$('...')` literal. Double
     // quotes work fine inside `$('...')`, so normalize rather than reject an
     // otherwise-correct selector purely for quote style.
-    const newSelector = patch.newSelector.replace(/'/g, '"');
+    let newSelector = patch.newSelector.replace(/'/g, '"');
+    let reason = patch.reason;
+    // Exact-name-match override: when the failing `~X` has a node named X in the
+    // captured DOM (resource-id/text moved), that DOM-derived selector is ground
+    // truth. A model patch pointing anywhere else is wrong even if its target
+    // exists (e.g. the app's root container), and a class-qualified variant of
+    // the right target can still miss at runtime — so the derived form wins.
+    const det = detByOld.get(patch.oldSelector);
+    if (det && det.newSelector !== newSelector) {
+      console.warn(`✎ override: model proposed "${newSelector}", but the DOM has an exact name match for "${patch.oldSelector}" — using "${det.newSelector}"`);
+      newSelector = det.newSelector;
+      reason = det.reason;
+    }
     const label = `${patch.file}: "${patch.oldSelector}" → "${newSelector}"`;
     const filePath = path.join(PAGE_OBJECTS_DIR, patch.file);
 
@@ -358,10 +383,10 @@ function applyPatches(patches, pageObjects, failingSelectors, dom) {
     }
 
     if (DRY_RUN) {
-      console.log(`✓ valid (dry-run, not written): ${label} — ${patch.reason}`);
+      console.log(`✓ valid (dry-run, not written): ${label} — ${reason}`);
     } else {
       fs.writeFileSync(filePath, updated, 'utf8');
-      console.log(`✓ patched ${label} (${patch.reason})`);
+      console.log(`✓ patched ${label} (${reason})`);
     }
     applied++;
   }
@@ -412,20 +437,23 @@ async function main() {
   if (getFailureDoms()) console.log('Using failure-time DOM snapshot(s) from dom-snapshots/');
   const pageObjects = readPageObjects();
 
+  // Ground-truth candidates derived straight from the captured DOM (exact name
+  // match) — used to override a model patch that points at the wrong element,
+  // and as the fallback when the model yields nothing usable.
+  const detCandidates = deterministicPatches(failures, pageObjects, uiHierarchy);
+  const detByOld = new Map(detCandidates.map(p => [p.oldSelector, p]));
+
   console.log(`Asking ${MODEL} (Ollama) for healing suggestions…`);
   const modelPatches = await askModelToHeal(failures, uiHierarchy, pageObjects);
 
   console.log(`\n${DRY_RUN ? '🔍 DRY RUN — validating' : 'Applying'} ${modelPatches.length} model patch(es):`);
-  let applied = applyPatches(modelPatches, pageObjects, failingSelectors, uiHierarchy);
+  let applied = applyPatches(modelPatches, pageObjects, failingSelectors, uiHierarchy, detByOld);
 
   // Fallback when the model gave nothing usable (crash/OOM, or all patches
   // rejected as hallucinations): derive patches directly from the DOM.
-  if (applied === 0) {
-    const det = deterministicPatches(failures, pageObjects, uiHierarchy);
-    if (det.length) {
-      console.log(`\nModel healing yielded 0 valid patches — trying ${det.length} deterministic DOM-based patch(es):`);
-      applied = applyPatches(det, pageObjects, failingSelectors, uiHierarchy);
-    }
+  if (applied === 0 && detCandidates.length) {
+    console.log(`\nModel healing yielded 0 valid patches — trying ${detCandidates.length} deterministic DOM-based patch(es):`);
+    applied = applyPatches(detCandidates, pageObjects, failingSelectors, uiHierarchy, detByOld);
   }
 
   if (DRY_RUN) {

@@ -184,10 +184,45 @@ pre-configured machine / cloud VM.
 ```bash
 appclaw "Open the Login screen and log in with demo@wdio.dev / Password123!"
 ```
-Show DOM-mode vs vision-mode. Then the deterministic path (zero LLM):
+Show DOM-mode vs vision-mode (in 2.x the switch is `AGENT_MODE`, and inline env
+vars override `.env`):
+```bash
+# DOM mode — the default (AGENT_MODE=dom): the agent reads the XML page source.
+# Fast, cheap, works with the text-only llama3.1. Verify with `appclaw doctor`
+# ("… dom mode …"):
+appclaw "Open the Login screen"
+
+# Vision mode: the agent reasons over screenshots instead of the DOM — for apps
+# with poor accessibility markup or webviews. Needs a local VISION-CAPABLE model
+# (llama3.1 is text-only). Instructor demo only — don't make the room pull ~8 GB:
+ollama pull llama3.2-vision                                        # once, ~8 GB
+AGENT_MODE=vision LLM_MODEL=llama3.2-vision appclaw "Open the Login screen"
+```
+> **What to tell the class:** both modes run the same Think → Act → Observe
+> loop — they differ only in what the agent's *eyes* are on the Observe step.
+> **DOM mode** reads the XML page source (the same accessibility tree WDIO
+> selectors query): structured text, so it works with a plain text model
+> (llama3.1, no cloud key), is fast and cheap per step, and gives reproducible,
+> debuggable evidence — the healer's DOM-existence guardrail is only possible
+> because of it. Its blind spot: it only knows what developers exposed — poor
+> accessibility markup, canvas UIs, or webviews leave it blind. **Vision mode**
+> observes a screenshot with a multimodal model: it sees what a human sees, so
+> markup quality is irrelevant — but it's slower per step, needs a bigger
+> model, and pixels give coordinates instead of selectors, so it's noisier and
+> harder to debug. One-liner: *DOM mode reads the app's skeleton; vision mode
+> looks at its skin. Read the skeleton when you can; look at the skin when the
+> skeleton is missing.* QA punchline: rich page source = the cheap mode — one
+> more reason to make developers add accessibility ids.
+
+Then the deterministic path (zero LLM):
 ```bash
 pnpm run claw:flow flows/login.yaml
 ```
+> **Playground mode gotcha:** `pnpm claw:play` opens Terminal Studio in
+> **step-recording** mode — typing a goal sentence there is parsed as one
+> structured step and fails (e.g. `Could not resolve app name "Login screen"`).
+> Type `/mode goal` first (or prefix with `/goal …`) to run goals; step mode is
+> for recording steps to `/export` as YAML.
 
 **01:55 — Self-healing (30 min) — the centrepiece.** Live break→heal:
 ```bash
@@ -195,8 +230,9 @@ pnpm run claw:flow flows/login.yaml
 #    e.g. droid/pageobjects/swipe.page.ts:  ~Carousel  → ~Carousel-BROKEN
 # 2. run the suite → the swipe tests fail; wdio.conf's afterTest snapshots the DOM
 pnpm test
-# 3. run the healer (local llama3.1, no key)
-node .github/scripts/heal-and-retry.js
+# 3. run the healer (local llama3.1, no key). Exclude the known-flaky
+#    example.spec.ts from the retry (same as CI) so a successful heal ends ✅:
+WDIO_EXCLUDE=specs/example.spec.ts node .github/scripts/heal-and-retry.js
 ```
 Narrate what scrolls by: *detect the genuinely-failed selector → read the
 failure-time DOM snapshot → ask llama3.1 → validate the patch (safe string,
@@ -239,6 +275,9 @@ issue only when real selectors broke. Point to `.github/workflows/android-tests.
 | `Could not find a connected Android device in 20000ms` | Appium started before device ready | wait for `sys.boot_completed=1` before `pnpm test` |
 | Emulator dead-slow | no acceleration | Apple Silicon: use `arm64-v8a` image; Intel/Linux: enable HAXM/KVM |
 | `npm i -g appclaw` fails: `ETARGET … df-vision@1.1.79` (or a df-vision 404) | the unscoped 1.x package is deprecated; its `df-vision` dep was unpublished | install the scoped package: `npm i -g @appclaw/cli` |
+| AppClaw: `model 'llama3.2' not found` | launched outside the repo root, so `.env` wasn't loaded — appclaw falls back to its default model | run from the repo root (`pnpm claw*` does), or from anywhere: `appclaw --playground --env-path /path/to/droid-detective/.env` |
+| AppClaw: `application at '…/apps/demo.apk' does not exist` (wrong prefix) | relative `APP_PATH` resolves against the **launch** directory, not the `.env` location | run from the repo root, or set `APP_PATH` to an absolute path in `.env` |
+| Playground: `Could not resolve app name "…" to a package` on a goal sentence | playground opens in step-recording mode — a typed goal is parsed as an `open <app>` step | `/mode goal` (or `/goal …`) to run goals; record steps one at a time otherwise |
 | Ollama call hangs / very slow | first load into RAM, or low RAM | pre-`ollama run llama3.1` once; close other apps |
 | Healer: "no parseable patch" every retry | 8B format non-determinism | expected occasionally; the script retries 5× — re-run |
 | Healer patches a wrong selector | model hallucinated a value | it won't apply — the DOM-existence guard rejects targets not in the snapshot |

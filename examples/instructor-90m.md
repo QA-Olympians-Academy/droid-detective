@@ -97,7 +97,8 @@ pnpm claw:flow flows/login.yaml
 Between the two runs, read one agent reasoning trace together off a
 participant's terminal — spot the DOM interpretation, point at the ranked
 locator choice (the ch4 material in 5 minutes). Land credentials-via-
-`.appclaw/env/` in one sentence. Playground recording (`pnpm claw:play`) and
+`.appclaw/env/` in one sentence. Playground recording (`pnpm claw:play` —
+starts in step-recording mode, `/mode goal` for goal sentences) and
 the Bot / LambdaTest path are **cut** — mention `pnpm bot` exists and move on.
 
 **If the room falls behind, drop the YAML replay and the trace read-along

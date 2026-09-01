@@ -95,7 +95,8 @@ Everyone runs one agentic loop, then sees the deterministic replay:
 ```bash
 # 1. natural-language agentic run (everyone):
 pnpm claw "Log in with alice@example.com and 10203040 and verify I am logged in"
-# 2. playground: record → /export to YAML (demo, drop first if behind):
+# 2. playground: record → /export to YAML (demo, drop first if behind).
+#    Opens in step-recording mode — `/mode goal` to type goal sentences instead:
 pnpm run claw:play
 # 3. deterministic YAML replay — zero LLM cost:
 pnpm run claw:flow flows/login.yaml

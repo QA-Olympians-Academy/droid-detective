@@ -8,4 +8,4 @@ appium.log
 .env
 *.pptx
 dom-snapshots/
-.appclaw/runs/
+.appclaw/
