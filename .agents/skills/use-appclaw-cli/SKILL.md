@@ -23,7 +23,7 @@ AppClaw requires:
 
 ```sh
 # Global install
-npm install -g appclaw
+npm install -g @appclaw/cli
 
 # Or run from a local clone
 git clone https://github.com/AppiumTestDistribution/appclaw.git

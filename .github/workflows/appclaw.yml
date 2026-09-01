@@ -30,13 +30,10 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # appclaw's published dependency df-vision was unpublished from npm, so
-      # `npm i -g appclaw` fails. scripts/appclaw.sh installs it into .appclaw-cli
-      # with df-vision overridden to the vendored stub (see the script header).
-      # Running --help here installs it and fails fast (before booting the
-      # emulator) if anything is wrong.
+      # The unscoped `appclaw` package is deprecated (its df-vision dep was
+      # unpublished); the CLI lives on as the scoped @appclaw/cli 2.x.
       - name: Install AppClaw CLI
-        run: bash scripts/appclaw.sh --help >/dev/null && echo "✓ appclaw installed"
+        run: npm install -g @appclaw/cli && appclaw --version
 
       # apps/*.apk is git-ignored — fetch the WebdriverIO demo app for the run.
       - name: Download demo app

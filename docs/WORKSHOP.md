@@ -148,7 +148,7 @@ See `workshop/02-arch-foundations/examples/architecture-overview.md` for the ann
 | Android SDK | Android Studio | `adb --version` |
 | Claude Code | `npm i -g @anthropic-ai/claude-code` | `claude --version` |
 | Ollama | [ollama.com](https://ollama.com) | `ollama --version` |
-| AppClaw | `npm i -g appclaw` | `appclaw --version` |
+| AppClaw | `npm i -g @appclaw/cli` | `appclaw --version` |
 
 > **Local models — no cloud LLM key required.** This workshop runs the agent
 > loop, healing, and analysis on a local model served by Ollama. Pull it once:

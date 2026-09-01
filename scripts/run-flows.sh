@@ -13,7 +13,7 @@ flow_name="${1:-}"
 
 if [ -n "$flow_name" ]; then
   echo "Running flow: flows/$flow_name"
-  exec bash scripts/appclaw.sh --flow "flows/$flow_name"
+  exec appclaw --flow "flows/$flow_name"
 fi
 
 # No specific flow → run them all. nullglob so an empty match isn't a literal glob.
@@ -26,5 +26,5 @@ fi
 
 for flow in "${flows[@]}"; do
   echo "=== Running flow: $flow ==="
-  bash scripts/appclaw.sh --flow "$flow"
+  appclaw --flow "$flow"
 done

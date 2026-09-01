@@ -592,7 +592,7 @@ The live DOM shows `~Checkout-tab` instead.
 AppClaw is a pre-built agentic layer over Appium.
 
 ```bash
-npm i -g appclaw
+npm i -g @appclaw/cli
 ```
 
 **Plain English mode:**

@@ -242,7 +242,7 @@ The pipeline is the same loop, automated end-to-end:
 | Symptom | Fix |
 |---------|-----|
 | `Could not find 'aapt2'` | install `build-tools;34.0.0` |
-| `npm i -g appclaw` 404 on df-vision | pin `appclaw@1.9.3` |
+| `npm i -g appclaw` 404/ETARGET on df-vision | old package is deprecated — `npm i -g @appclaw/cli` |
 | `adb: no devices` | boot the emulator; `adb kill-server && adb start-server` |
 | Emulator dead-slow | Apple Silicon → `arm64-v8a` image; Intel/CI → enable KVM |
 | Healer "no parseable patch" | 8B format variance — it retries 5×; re-run |

@@ -4,8 +4,9 @@ Facilitator notes for the 3-hour cut ([docs/WORKSHOP-3H.md](../docs/WORKSHOP-3H.
 is the agenda; [docs/PLAYBOOK-3H.md](../docs/PLAYBOOK-3H.md) has the student
 prerequisites, pre-flight checklist, and troubleshooting table — this file does
 not repeat them). For every block: exactly what to run, what to point at, and
-how to reset. Like [instructor.md](instructor.md) (the full-day run-book), this
-file lives only on `main` — the branch build strips it from participant branches.
+how to reset. Like [instructor.md](instructor.md) (the full-day run-book) and
+[instructor-90m.md](instructor-90m.md) (the 90-minute cut), this file lives
+only on `main` — the branch build strips it from participant branches.
 
 **The 3-hour format is fully local: Ollama + llama3.1, no cloud LLM key.**
 
@@ -20,7 +21,8 @@ ls apps/demo.apk                        # demo app in place (PLAYBOOK-3H §0.6 t
 emulator -avd workshop_avd &            # boot + verify
 adb devices                             # expect: emulator-5554   device
 ollama pull llama3.1 && ollama run llama3.1 ''   # pull AND warm the local model
-# first AppClaw run installs the CLI into .appclaw-cli (slow) — warm it now:
+# AppClaw CLI is a global install — verify it, then smoke the flow:
+appclaw --version || npm i -g @appclaw/cli
 pnpm claw:flow flows/login.yaml
 ```
 
@@ -64,7 +66,7 @@ Do **not** teach installation — pre-work (PLAYBOOK-3H §0) is mandatory. Run t
 adb devices                          # emulator-5554  device
 curl -s http://localhost:11434/api/tags >/dev/null && echo "✓ ollama up"
 pnpm test                            # suite starts, app installs, specs run
-appclaw "Open the Login screen"      # ✓ Navigated to Login screen
+pnpm claw "Open the Login screen"    # ✓ Navigated to Login screen
 ```
 
 **Checkpoint 1 — gate everything on this.** Hands up when green; pair anyone
@@ -89,7 +91,7 @@ Everyone runs one agentic loop, then sees the deterministic replay:
 
 ```bash
 # 1. natural-language agentic run (everyone):
-appclaw "Log in with alice@example.com and 10203040 and verify I am logged in"
+pnpm claw "Log in with alice@example.com and 10203040 and verify I am logged in"
 # 2. playground: record → /export to YAML (demo, drop first if behind):
 pnpm run claw:play
 # 3. deterministic YAML replay — zero LLM cost:
@@ -189,7 +191,7 @@ The full troubleshooting table (every failure was hit for real) is in
 
 - Ollama's first call loads the model into RAM and looks like a hang — warm it
   (`ollama run llama3.1 ''`) before 00:30 and again during the break.
-- First `pnpm claw` run installs the CLI into `.appclaw-cli` — do it the day
-  before, not at 01:15.
+- AppClaw is a global install (`npm i -g @appclaw/cli`) — verify
+  `appclaw --version` the day before, not at 01:15.
 - Healer prints "no parseable patch" — expected occasionally with an 8B model;
   the script retries 5×, just re-run.

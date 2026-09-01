@@ -1,8 +1,9 @@
 # Instructor Run-Book — how to run each chapter
 
 Facilitator notes for the full-day workshop (AutomationSTAR schedule in
-[workshop/README.md](../workshop/README.md)). Running the 3-hour cut instead?
-Use [instructor-3h.md](instructor-3h.md). For every chapter: what to have
+[workshop/README.md](../workshop/README.md)). Running a shorter cut instead?
+Use [instructor-3h.md](instructor-3h.md) or [instructor-90m.md](instructor-90m.md).
+For every chapter: what to have
 ready, exactly what to run, what to point at, and how to reset. This file
 lives only on `main` — the branch build strips it from participant branches.
 
@@ -23,7 +24,8 @@ ollama pull llama3.1
 # LLM for ch5 live runs — pick one:
 export LLM_BASE_URL=https://openrouter.ai/api/v1 OPEN_ROUTER_API_KEY=sk-...
 # export LLM_BASE_URL=http://localhost:11434/v1 LLM_API_KEY=ollama LLM_MODEL=qwen2.5
-# first AppClaw run installs the CLI into .appclaw-cli (slow) — warm it now:
+# AppClaw CLI is a global install — verify it, then smoke the flow:
+appclaw --version || npm i -g @appclaw/cli
 pnpm claw:flow flows/login.yaml
 # rebuild + publish participant branches if examples changed:
 PUSH=1 bash workshop/build-branches.sh
@@ -194,8 +196,9 @@ git checkout main && bash workshop/build-branches.sh   # rebuild checkpoints
 ## Known gotchas
 
 - `Cannot find module 'webdriverio'` on `pnpm bot` / ch5 runner → `pnpm add -D webdriverio` once.
-- First `pnpm claw` run installs the CLI into `.appclaw-cli` (df-vision is
-  vendored as a stub — see `scripts/appclaw.sh` header). Do it before the room fills.
+- AppClaw is a global install (`npm i -g @appclaw/cli` — the scoped 2.x package;
+  the old unscoped `appclaw` is deprecated and won't install). Verify
+  `appclaw --version` before the room fills.
 - Root `.gitignore` ignores `*.log` — the ch6 fixture is `appium-failure.log`
   (explicitly un-ignored); don't rename it back to `appium.log`.
 - Ollama on CPU is slow: for ch6 `--llm` and ch9, warm the model

@@ -14,7 +14,7 @@
 | JDK 11+ | [adoptium.net](https://adoptium.net) | `java -version` |
 | Android SDK | Android Studio or `sdkmanager` | `adb --version` |
 | Claude Code | `npm i -g @anthropic-ai/claude-code` | `claude --version` |
-| AppClaw | `npm i -g appclaw` | `appclaw --version` |
+| AppClaw | `npm i -g @appclaw/cli` | `appclaw --version` |
 | Ollama (local model) | [ollama.com](https://ollama.com) | `ollama --version` |
 
 ---

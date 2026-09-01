@@ -71,6 +71,7 @@ for ((i = 0; i < n; i++)); do
   git rm -q workshop/build-branches.sh
   [ -f examples/instructor.md ] && git rm -q examples/instructor.md
   [ -f examples/instructor-3h.md ] && git rm -q examples/instructor-3h.md
+  [ -f examples/instructor-90m.md ] && git rm -q examples/instructor-90m.md
 
   git commit -q -m "workshop: ${branch} starter — chapters ${start_ch}+ as exercises
 

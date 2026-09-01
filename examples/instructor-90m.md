@@ -22,7 +22,8 @@ ls apps/demo.apk                        # demo app in place (PLAYBOOK-3H §0.6 t
 emulator -avd workshop_avd &            # boot + verify
 adb devices                             # expect: emulator-5554   device
 ollama pull llama3.1 && ollama run llama3.1 ''   # pull AND warm the local model
-# first AppClaw run installs the CLI into .appclaw-cli (slow) — warm it now:
+# AppClaw CLI is a global install — verify it, then smoke the flow:
+appclaw --version || npm i -g @appclaw/cli
 pnpm claw:flow flows/login.yaml
 ```
 
@@ -158,7 +159,7 @@ The three that bite in this format:
 
 - Ollama's first call loads the model into RAM and looks like a hang — warm it
   (`ollama run llama3.1 ''`) right before 00:00; there is no break to recover in.
-- First `pnpm claw` run installs the CLI into `.appclaw-cli` — do it the day
-  before, not at 00:20.
+- AppClaw is a global install (`npm i -g @appclaw/cli`) — verify
+  `appclaw --version` the day before, not at 00:20.
 - Healer prints "no parseable patch" — expected occasionally with an 8B model;
   the script retries 5×, just re-run. Budget one retry into the 20 minutes.

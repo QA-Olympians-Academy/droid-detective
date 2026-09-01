@@ -36,14 +36,17 @@ The agent, self-healing, and analysis all run on **Ollama + llama3.1** locally.
 | Appium 3 | `npm i -g appium` | `appium --version` |
 | UiAutomator2 driver | `appium driver install uiautomator2` | `appium driver list --installed` |
 | Ollama | [ollama.com](https://ollama.com) | `ollama --version` |
-| AppClaw CLI | `npm i -g appclaw@1.9.3` | `appclaw --version` |
+| AppClaw CLI | `npm i -g @appclaw/cli` | `appclaw --version` |
 
 > **macOS JDK note:** do **not** use `brew install --cask temurin` in a headless
 > shell — it runs a `.pkg` installer that needs `sudo`. `brew install openjdk@17`
 > (a formula) installs without sudo; set `JAVA_HOME=$(brew --prefix openjdk@17)`.
 >
-> **AppClaw pin:** install `appclaw@1.9.3`, not `@1.1.0` — the old version depends
-> on `df-vision@1.1.77`, which has been unpublished from npm and won't install.
+> **AppClaw package name:** install the **scoped** `@appclaw/cli` (2.x), not the
+> old unscoped `appclaw` — that 1.x package is deprecated ("moved to
+> @appclaw/core") and fails to install: it pins `df-vision@1.1.79`, which was
+> unpublished from npm, so every version errors with `ETARGET / No matching
+> version found for df-vision@1.1.79`.
 
 ### 0.3 Android SDK packages (if not using Android Studio's SDK manager)
 
@@ -228,7 +231,7 @@ issue only when real selectors broke. Point to `.github/workflows/android-tests.
 | `adb: no devices/emulators found` | emulator not booted | boot it (§0.8); `adb kill-server && adb start-server` |
 | `Could not find a connected Android device in 20000ms` | Appium started before device ready | wait for `sys.boot_completed=1` before `pnpm test` |
 | Emulator dead-slow | no acceleration | Apple Silicon: use `arm64-v8a` image; Intel/Linux: enable HAXM/KVM |
-| `npm i -g appclaw` fails on `df-vision-1.1.77.tgz 404` | old appclaw's dep unpublished | install `appclaw@1.9.3` |
+| `npm i -g appclaw` fails: `ETARGET … df-vision@1.1.79` (or a df-vision 404) | the unscoped 1.x package is deprecated; its `df-vision` dep was unpublished | install the scoped package: `npm i -g @appclaw/cli` |
 | Ollama call hangs / very slow | first load into RAM, or low RAM | pre-`ollama run llama3.1` once; close other apps |
 | Healer: "no parseable patch" every retry | 8B format non-determinism | expected occasionally; the script retries 5× — re-run |
 | Healer patches a wrong selector | model hallucinated a value | it won't apply — the DOM-existence guard rejects targets not in the snapshot |
@@ -254,7 +257,8 @@ export JAVA_HOME=${JAVA_HOME:-$(brew --prefix openjdk@17 2>/dev/null || echo /us
 export PATH="$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$ANDROID_HOME/build-tools/34.0.0:$PATH"
 
 echo "checks:"; node -v; pnpm -v; java -version 2>&1 | head -1; adb --version | head -1
-appium --version; ollama --version; appclaw --version
+appium --version; ollama --version
+appclaw --version 2>/dev/null || npm i -g @appclaw/cli
 
 ollama list | grep -q llama3.1 || ollama pull llama3.1
 [ -f apps/demo.apk ] || curl -L -o apps/demo.apk \
