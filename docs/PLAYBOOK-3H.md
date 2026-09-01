@@ -124,8 +124,9 @@ APP_PATH=apps/demo.apk
 echo "no" | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd \
   -n workshop_avd -k "system-images;android-34;google_apis;arm64-v8a" -d pixel_6 --force
 
-# 1. boot the emulator (headless)
-emulator -avd workshop_avd -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect &
+# 1. boot the emulator (windowed — you'll watch the app being driven all day;
+#    CI is the only place we boot headless with -no-window)
+emulator -avd workshop_avd -no-audio -no-boot-anim &
 adb wait-for-device
 until [ "$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')" = "1" ]; do sleep 3; done
 adb devices                          # expect: emulator-5554  device
