@@ -1,8 +1,7 @@
 name: AI Agent Bot
 
 on:
-  schedule:
-    - cron: '0 2 * * *'  # nightly at 02:00 UTC
+  # Manual runs only — no schedule, so the bot never spends runner minutes unattended.
   workflow_dispatch:
     inputs:
       task:
