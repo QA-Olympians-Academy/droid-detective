@@ -8,4 +8,5 @@ appium.log
 .env
 *.pptx
 dom-snapshots/
-.appclaw/
+.appclaw/*
+!.appclaw/guides/
