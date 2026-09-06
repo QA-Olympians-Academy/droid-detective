@@ -35,6 +35,9 @@ on stage:
 
 ```bash
 pnpm claw "Log in with alice@example.com and 10203040 and verify I am logged in"   # 00:35 run
+# example.spec.ts is excluded (as in CI) so a successful heal ends ✅ — the
+# swipe/drag/webview spec is the one the demo heals:
+export WDIO_EXCLUDE=specs/example.spec.ts
 pnpm test                                # ch6 baseline; afterTest snapshots the DOM
 node .github/scripts/heal-and-retry.js   # 01:05 dry-run against a staged break
 ```
@@ -115,6 +118,7 @@ it yourself beats waiting for the whole room):
 ```bash
 # 1. rename a selector in a page object, e.g.
 #    droid/pageobjects/swipe.page.ts:  ~Carousel → ~Carousel-BROKEN
+export WDIO_EXCLUDE=specs/example.spec.ts  # skip example.spec.ts, same as CI
 pnpm test                                # swipe tests fail; afterTest snapshots the DOM
 node .github/scripts/heal-and-retry.js   # local llama3.1 proposes, guardrails dispose
 git checkout droid/pageobjects           # reset after
