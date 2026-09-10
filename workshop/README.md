@@ -50,6 +50,13 @@ Branches are generated with `bash workshop/build-branches.sh` (idempotent;
 
 ## Exercises
 
+**Running the room?** [LIVE-EXERCISES.md](LIVE-EXERCISES.md) is the run sheet — one 2–5 minute
+live exercise per chapter, mapped to the 3-hour agenda, with a cut-down version of each for
+when you are behind schedule.
+
+The longer labs below are the deep work: 15–20 minutes each, for a full-day format or as
+take-home.
+
 | Exercise | Chapter | Topic |
 |----------|---------|-------|
 | 3 | Setup | Environment smoke test + first agent run |
