@@ -344,10 +344,9 @@ The agent orchestrates all four — you configure the boundaries of each.
 | pnpm | ≥ 10 | `pnpm -v` |
 | Java JDK | 17 | `java -version` |
 | Android SDK | API 34 | `sdkmanager --list` |
-| Appium | 2.x | `appium -v` |
-| AppClaw | latest | `appclaw --version` |
+| Appium | 3.x | `appium --version` |
+| AppClaw | 2.x (`@appclaw/cli`) | `appclaw --version` |
 | Ollama | latest | `ollama --version` |
-| Claude Code | latest | `claude --version` |
 
 ```bash
 # Verify everything at once
@@ -368,7 +367,7 @@ LLM_PROVIDER=ollama
 LLM_API_KEY=ollama
 LLM_BASE_URL=http://localhost:11434/v1
 LLM_MODEL=llama3.1
-VISION_MODEL=llama3.2-vision
+# VISION_MODEL=llama3.2-vision   # only for AGENT_MODE=vision
 
 # AppClaw / agent
 AGENT_MODE=dom

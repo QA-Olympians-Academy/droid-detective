@@ -143,12 +143,13 @@ See `workshop/02-arch-foundations/examples/architecture-overview.md` for the ann
 | Tool | Install | Verify |
 |------|---------|--------|
 | Node.js 20+ | [nodejs.org](https://nodejs.org) | `node -v` |
-| pnpm | `npm i -g pnpm` | `pnpm -v` |
-| JDK 11+ | [adoptium.net](https://adoptium.net) | `java -version` |
-| Android SDK | Android Studio | `adb --version` |
-| Claude Code | `npm i -g @anthropic-ai/claude-code` | `claude --version` |
+| pnpm 10 | `corepack enable` (ships with Node) | `pnpm -v` |
+| JDK 17 | macOS: `brew install openjdk@17` · else [adoptium.net](https://adoptium.net) | `java -version` |
+| Android SDK + build-tools 34 | Android Studio or `sdkmanager` | `adb --version` · `emulator -version` |
+| Appium 3 | `npm i -g appium` | `appium --version` |
+| UiAutomator2 driver | `appium driver install uiautomator2` | `appium driver list --installed` |
 | Ollama | [ollama.com](https://ollama.com) | `ollama --version` |
-| AppClaw | `npm i -g @appclaw/cli` | `appclaw --version` |
+| AppClaw CLI | `npm i -g @appclaw/cli` (scoped 2.x) | `appclaw --version` |
 
 > **Local models — no cloud LLM key required.** This workshop runs the agent
 > loop, healing, and analysis on a local model served by Ollama. Pull it once:
@@ -191,16 +192,19 @@ DEVICE_UDID=emulator-5554
 APP_PATH=apps/demo.apk
 MAX_STEPS=20
 SHOW_TOKEN_USAGE=true
-LT_USERNAME=your-lt-username
-LT_ACCESS_KEY=your-lt-access-key
-LT_APP_URL=lt://APP123456
+
+# OPTIONAL — cloud-device Bot run only; not needed for the workshop
+# LT_USERNAME=your-lt-username
+# LT_ACCESS_KEY=your-lt-access-key
+# LT_APP_URL=lt://APP123456
 ```
 
 ### Smoke test
 
 ```bash
 pnpm test
-# Expected: 9 passing tests
+# Green condition: it starts, installs the app and runs specs
+# (some assertions may fail — the point is that the stack works)
 ```
 
 ### Validate the agentic environment

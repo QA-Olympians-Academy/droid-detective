@@ -66,10 +66,10 @@ By the end of the session, each participant can:
 > Pre-work e-mail should ask attendees to install tools **before** the session.
 > Budget this block for fixing stragglers, not first-time installs.
 
-- Verify toolchain: `node -v`, `pnpm -v`, `java -version`, `adb --version`, `claude --version`, `appclaw --version`.
+- Verify toolchain: `node -v`, `pnpm -v`, `java -version`, `adb --version`, `appium --version`, `appclaw --version`, `ollama --version`.
 - `pnpm install` + driver install.
 - Configure `.env` (walk the key vars).
-- Smoke test: `pnpm test` → expect 9 passing.
+- Smoke test: `pnpm test` → it must start, install the app and run specs (failing assertions are OK).
 - Validate agentic stack: `appclaw "Open the Login screen"` → `✓ Navigated to Login screen`.
 - **Checkpoint:** everyone raises a hand when green before moving on.
 

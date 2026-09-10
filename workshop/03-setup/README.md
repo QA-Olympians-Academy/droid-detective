@@ -10,12 +10,17 @@
 | Tool | Install | Verify |
 |------|---------|--------|
 | Node.js 20+ | [nodejs.org](https://nodejs.org) | `node -v` |
-| pnpm | `npm i -g pnpm` | `pnpm -v` |
-| JDK 11+ | [adoptium.net](https://adoptium.net) | `java -version` |
-| Android SDK | Android Studio or `sdkmanager` | `adb --version` |
-| Claude Code | `npm i -g @anthropic-ai/claude-code` | `claude --version` |
-| AppClaw | `npm i -g @appclaw/cli` | `appclaw --version` |
+| pnpm 10 | `corepack enable` (ships with Node) | `pnpm -v` |
+| JDK 17 | macOS: `brew install openjdk@17` · else [adoptium.net](https://adoptium.net) | `java -version` |
+| Android SDK + build-tools 34 | Android Studio or `sdkmanager` | `adb --version` · `emulator -version` |
+| Appium 3 | `npm i -g appium` | `appium --version` |
+| UiAutomator2 driver | `appium driver install uiautomator2` | `appium driver list --installed` |
+| AppClaw CLI | `npm i -g @appclaw/cli` (scoped 2.x) | `appclaw --version` |
 | Ollama (local model) | [ollama.com](https://ollama.com) | `ollama --version` |
+
+> Install the **scoped** `@appclaw/cli` (2.x). The old unscoped `appclaw` (1.x) is
+> deprecated and fails to install (`ETARGET … df-vision@1.1.79`).
+> Full prerequisites, with the macOS JDK caveat: [PLAYBOOK-3H §0](../../docs/PLAYBOOK-3H.md).
 
 ---
 
@@ -121,10 +126,11 @@ APP_PATH=apps/demo.apk
 MAX_STEPS=20
 SHOW_TOKEN_USAGE=true
 
-# LambdaTest — required for the Bot
-LT_USERNAME=your-lt-username
-LT_ACCESS_KEY=your-lt-access-key
-LT_APP_URL=lt://APP123456
+# LambdaTest — OPTIONAL. Only for the cloud-device Bot run (exercise 5b) and the
+# bot CI workflow. Not needed for any of the workshop's hands-on blocks.
+# LT_USERNAME=your-lt-username
+# LT_ACCESS_KEY=your-lt-access-key
+# LT_APP_URL=lt://APP123456
 ```
 
 **Never commit `.env` to git.**
@@ -137,7 +143,9 @@ LT_APP_URL=lt://APP123456
 pnpm test
 ```
 
-Expected: 9 passing tests. Common issues:
+**Green condition:** the run **starts, installs the app, and executes specs.**
+Some assertions may fail — that is fine; the point is that the stack works
+end to end. Common issues:
 
 | Symptom | Fix |
 |---------|-----|
@@ -148,20 +156,7 @@ Expected: 9 passing tests. Common issues:
 
 ---
 
-## Step 8 — Claude Code authentication
-
-```bash
-claude   # opens browser — log in with your Anthropic account
-```
-
-Verify Claude has project context:
-```
-> What test specs exist in this project?
-```
-
----
-
-## Step 9 — Validate the agentic environment
+## Step 8 — Validate the agentic environment
 
 Run your first plain-English prompt:
 
@@ -189,9 +184,8 @@ Understanding these shapes how you write test goals, system prompts, and healing
 ## Checkpoint
 
 - [ ] `adb devices` shows `emulator-5554   device`
-- [ ] `pnpm test` passes all 9 tests
-- [ ] `appclaw --version` returns 1.1.x or higher
-- [ ] `claude --version` returns a version number
+- [ ] `pnpm test` starts, installs the app, and runs specs (failing assertions are OK)
+- [ ] `appclaw --version` returns 2.x
 - [ ] `ollama list` shows `llama3.1`
 - [ ] `.env` is populated with `LLM_PROVIDER=ollama` and `LLM_MODEL=llama3.1`
 - [ ] `appclaw "Open the Login screen"` produces a step log
