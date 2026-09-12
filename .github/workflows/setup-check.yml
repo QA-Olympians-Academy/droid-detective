@@ -1,0 +1,57 @@
+name: Installer check
+
+# Exercises setup.sh the way an attendee runs it — piped into bash on a machine
+# without the workshop toolchain — then verifies with `--check`. Runs on both
+# runner OSes so a drifting download (cmdline-tools build, Node tarball, Ollama
+# installer, npm package) is caught before the workshop, not by the students.
+on:
+  workflow_dispatch:
+  pull_request:
+    paths: [setup.sh, .github/workflows/setup-check.yml]
+  push:
+    branches: [main]
+    paths: [setup.sh, .github/workflows/setup-check.yml]
+  schedule:
+    - cron: '0 6 * * 1'     # Mondays 06:00 UTC
+
+jobs:
+  install:
+    name: setup.sh on ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    env:
+      SKIP_MODEL: '1'                                   # the 4.9 GB pull is the one step that cannot drift
+      WORKSHOP_DIR: ${{ github.workspace }}             # the checkout is the clone
+      ANDROID_HOME: ${{ runner.temp }}/android-sdk      # ignore the runner's preinstalled SDK — download like a student
+      SHELL: /bin/bash                                  # profile block goes to ~/.bashrc
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Enable KVM for the emulator (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Run the installer as an attendee would (piped into bash)
+        run: cat setup.sh | bash
+
+      - name: Verify from a shell that only has the profile block
+        run: bash -c 'source ~/.bashrc && ./setup.sh --check'
+
+      - name: Boot the emulator and run the smoke test (Linux has KVM)
+        if: runner.os == 'Linux'
+        env:
+          WDIO_EXCLUDE: specs/example.spec.ts
+        run: |
+          source ~/.bashrc
+          HEADLESS=1 ./setup.sh --boot
+          # PLAYBOOK §0.8 green condition: the suite starts, installs the app, runs specs.
+          # Some assertions fail by design (staged healer demo), so only the install is asserted.
+          pnpm test || echo "::warning::pnpm test had failing specs — expected; asserting the app got installed"
+          adb shell pm list packages | grep -q com.wdiodemoapp && echo "✓ demo app installed on the emulator"

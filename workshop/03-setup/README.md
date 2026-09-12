@@ -7,6 +7,14 @@
 
 ## Required tools
 
+> **Fast path.** One command installs everything on this page — tools, SDK, emulator, model,
+> repo, APK, `.env` — and prints a verification report. Run it days before the session:
+> ```bash
+> curl -fsSL https://raw.githubusercontent.com/QA-Olympians-Academy/droid-detective/main/setup.sh | bash
+> ```
+> Already ran it? `./setup.sh --check` re-prints the report and `./setup.sh --boot` starts the
+> emulator — then jump to **Step 7**. The steps below are the manual route.
+
 | Tool | Install | Verify |
 |------|---------|--------|
 | Node.js 20+ | [nodejs.org](https://nodejs.org) | `node -v` |
@@ -72,6 +80,8 @@ Drop the APK in `apps/demo.apk`.
 ---
 
 ## Step 3 — Create the emulator
+
+> Ran `setup.sh`? `workshop_avd` (Pixel 6, API 34) already exists — `./setup.sh --boot` starts it. Skip Steps 3–4.
 
 ```bash
 sdkmanager "system-images;android-34;google_apis;x86_64"

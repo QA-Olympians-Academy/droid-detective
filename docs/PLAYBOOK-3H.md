@@ -26,6 +26,17 @@ The agent, self-healing, and analysis all run on **Ollama + llama3.1** locally.
 
 ### 0.2 Toolchain to install (with verify commands)
 
+> **Fast path — one command.** `setup.sh` (repo root, served raw from GitHub) installs or
+> repairs everything in §0.2–§0.7, creates the AVD from §0.8, writes the env vars from §0.4
+> into the shell profile, and prints a ✓/✗ report. It is idempotent — re-run it any time.
+> ```bash
+> curl -fsSL https://raw.githubusercontent.com/QA-Olympians-Academy/droid-detective/main/setup.sh | bash
+> ```
+> macOS needs Homebrew first ([brew.sh](https://brew.sh)); Windows runs it inside WSL2 (Ubuntu);
+> Linux is asked for sudo once (Ollama's installer). `./setup.sh --check` re-prints the report,
+> `./setup.sh --boot` starts the emulator. See §5 for flags and the room mirror.
+> The table below is what it installs — the manual route if you prefer it.
+
 | Tool | Install | Verify (must succeed) |
 |------|---------|----------------------|
 | Node.js 20+ | [nodejs.org](https://nodejs.org) | `node -v` |
@@ -116,6 +127,9 @@ APP_PATH=apps/demo.apk
 
 ### 0.8 ✅ Pre-flight smoke test (the gate — students run this and screenshot the result)
 ```bash
+# Shortcut: `./setup.sh --boot` does steps 0–1 (creates workshop_avd if missing, boots it,
+#           waits for sys.boot_completed) and `./setup.sh --check` is the screenshot-able report.
+
 # 0. create the AVD — once. Skip if `emulator -list-avds` already shows
 #    workshop_avd (or reuse any AVD it lists — substitute its name below).
 #    System image must match §0.3: Apple Silicon → arm64-v8a, Intel/Linux → x86_64.
@@ -281,6 +295,9 @@ issue only when real selectors broke. Point to `.github/workflows/android-tests.
 | Ollama call hangs / very slow | first load into RAM, or low RAM | pre-`ollama run llama3.1` once; close other apps |
 | Healer: "no parseable patch" every retry | 8B format non-determinism | expected occasionally; the script retries 5× — re-run |
 | Healer patches a wrong selector | model hallucinated a value | it won't apply — the DOM-existence guard rejects targets not in the snapshot |
+| `setup.sh`: `Homebrew is required on macOS` | fresh Mac | install Homebrew from brew.sh, open a new terminal, re-run |
+| `setup.sh`: `step failed: …` | one step errored (network, sudo declined, …) | fix what the error above it says, re-run the same command — it resumes where it stopped |
+| `setup.sh` on Windows: `Unsupported OS` / `bash: command not found` | run from PowerShell or Git Bash | run it inside WSL2 (Ubuntu). The emulator additionally needs nested virtualization (`nestedVirtualization=true` under `[wsl2]` in `%UserProfile%\.wslconfig`) or run the emulator in Android Studio on the Windows side |
 
 ### CI-only gotchas (for the GitHub Actions chapter)
 | Symptom | Fix |
@@ -293,26 +310,46 @@ issue only when real selectors broke. Point to `.github/workflows/android-tests.
 
 ---
 
-## 5. One-shot student setup script (share as `setup.sh`)
+## 5. One-shot student setup script (`setup.sh`, repo root)
+
+The installer is a file in the repo, served raw from GitHub — students never copy it out of
+a PDF (the long `export PATH=` lines used to wrap and break):
 
 ```bash
-#!/usr/bin/env bash
-set -euo pipefail
-export ANDROID_HOME=${ANDROID_HOME:-$HOME/Library/Android/sdk}
-export JAVA_HOME=${JAVA_HOME:-$(brew --prefix openjdk@17 2>/dev/null || echo /usr/lib/jvm/java-17)}
-export PATH="$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$ANDROID_HOME/build-tools/34.0.0:$PATH"
-
-echo "checks:"; node -v; pnpm -v; java -version 2>&1 | head -1; adb --version | head -1
-appium --version; ollama --version
-appclaw --version 2>/dev/null || npm i -g @appclaw/cli
-
-ollama list | grep -q llama3.1 || ollama pull llama3.1
-[ -f apps/demo.apk ] || curl -L -o apps/demo.apk \
-  "$(curl -s https://api.github.com/repos/webdriverio/native-demo-app/releases/latest | grep -o 'https://[^"]*\.apk')"
-pnpm install
-pnpm run appium:install-driver
-echo "✅ prerequisites satisfied — boot the emulator and run 'pnpm test' to finish the smoke test"
+curl -fsSL https://raw.githubusercontent.com/QA-Olympians-Academy/droid-detective/main/setup.sh | bash
 ```
+
+| Command | What it does |
+|---------|--------------|
+| `./setup.sh` | install / repair everything in §0.2–§0.7 plus the AVD (idempotent), then print the report |
+| `./setup.sh --check` | verify only — the report students screenshot (exit 1 if anything is missing) |
+| `./setup.sh --boot` | create-if-missing + boot `workshop_avd`, wait for `sys.boot_completed=1` |
+
+Knobs: `WORKSHOP_DIR` (clone target, default `~/droid-detective`; a clone you run it from is
+used as-is), `ANDROID_HOME` (an Android Studio SDK at the default path is reused),
+`SKIP_MODEL=1`, `LLM_MODEL`, `HEADLESS=1` (with `--boot`). Supported: macOS (Apple Silicon +
+Intel), Linux x86_64, Windows via WSL2. On macOS a missing Node is installed as the `node@24`
+LTS keg, a missing JDK as `openjdk@17`, Ollama as a `brew services` daemon; on Linux Node and
+the JDK go to `~/.local` (no sudo) and Ollama uses its official installer (sudo once).
+
+**Room mirror (venue Wi-Fi).** The downloads are ~10 GB per laptop. Copy them to a USB stick
+or shared drive and point the script at it — anything found there is copied instead of
+downloaded:
+
+```
+$WORKSHOP_MIRROR/
+├── commandlinetools-mac-*.zip · commandlinetools-linux-*.zip
+├── demo.apk
+├── system-images/android-34/google_apis/{arm64-v8a,x86_64}/   ← from your own $ANDROID_HOME
+└── ollama/models/                                             ← copy of your ~/.ollama/models
+```
+```bash
+WORKSHOP_MIRROR=/Volumes/WORKSHOP bash setup.sh
+```
+
+`.github/workflows/setup-check.yml` runs the installer on ubuntu + macOS runners (weekly, and
+on every change to `setup.sh`), boots the emulator on the Linux runner and runs `pnpm test`,
+so a drifting download URL is caught before students hit it.
 
 ---
 

@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Agentic Mobile QA — attendee preparation guide</title>
+<!--
+  Source of docs/PREPARATION.pdf. Content derives from docs/PLAYBOOK-3H.md §0 / §4 / §5.
+  Render (A4, no browser header/footer):
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" --headless=new --disable-gpu \
+      --no-pdf-header-footer --print-to-pdf=docs/PREPARATION.pdf file://$PWD/docs/PREPARATION.src.html
+-->
+<style>
+  @page { size: A4; margin: 13mm 14mm 15mm; }
+  :root {
+    --ink:#0f172a; --muted:#475569; --accent:#1d4ed8; --accent-ink:#1e3a8a; --line:#e2e8f0; --soft:#f1f5f9;
+    --warn-bg:#fff7ed; --warn-line:#fb923c; --ok-bg:#f0fdf4; --ok-line:#4ade80; --code-bg:#0b1220; --code-ink:#e2e8f0;
+  }
+  * { box-sizing:border-box; }
+  html, body { margin:0; padding:0; }
+  body { font: 10pt/1.42 -apple-system, "SF Pro Text", "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif; color:var(--ink); -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  code, pre, .mono { font-family: "SF Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace; }
+  code { background:var(--soft); padding:0 .3em; border-radius:3px; font-size:.9em; }
+  pre { background:var(--code-bg); color:var(--code-ink); padding:8pt 11pt; border-radius:6px; font-size:8.5pt; line-height:1.42; white-space:pre-wrap; overflow-wrap:anywhere; margin:5pt 0 8pt; break-inside:avoid; }
+  pre code { background:none; padding:0; color:inherit; font-size:inherit; }
+  pre .c { color:#8ea0b8; }
+  pre.big { font-size:10pt; padding:11pt 13pt; border:2px solid var(--accent); }
+  header { border-bottom:2.5px solid var(--accent); padding-bottom:8pt; margin-bottom:10pt; }
+  .kicker { letter-spacing:.3em; font-size:7.8pt; font-weight:700; color:var(--accent); text-transform:uppercase; }
+  h1 { font-size:22pt; margin:3pt 0 2pt; letter-spacing:-.01em; line-height:1.15; }
+  .sub { color:var(--muted); font-size:10.3pt; margin:0; }
+  .chips { display:flex; gap:6pt; flex-wrap:wrap; margin-top:8pt; }
+  .chip { border:1px solid var(--line); border-radius:999px; padding:2pt 9pt; font-size:8.3pt; font-weight:600; color:var(--accent-ink); background:#fff; }
+  .callout { border-left:4px solid var(--accent); background:var(--soft); padding:7pt 10pt; border-radius:4px; margin:7pt 0; break-inside:avoid; }
+  .callout.warn { border-color:var(--warn-line); background:var(--warn-bg); }
+  .callout.ok { border-color:var(--ok-line); background:var(--ok-bg); }
+  .callout p { margin:0 0 3pt; } .callout p:last-child { margin:0; }
+  section { margin:9pt 0 0; break-inside:auto; }
+  h2 { display:flex; align-items:center; gap:8pt; font-size:13pt; margin:0 0 5pt; break-after:avoid; }
+  h2 .n { display:inline-flex; align-items:center; justify-content:center; width:18pt; height:18pt; border-radius:5px; background:var(--accent); color:#fff; font-size:9.5pt; font-weight:800; flex:none; }
+  p { margin:0 0 5pt; }
+  ul.check { list-style:none; padding:0; margin:0 0 5pt; }
+  ul.check li { padding-left:16pt; position:relative; margin:0 0 2.5pt; }
+  ul.check li::before { content:"☐"; position:absolute; left:0; top:0; color:var(--accent-ink); }
+  ul.plain { margin:0 0 5pt 14pt; padding:0; } ul.plain li { margin:0 0 2pt; }
+  table { width:100%; border-collapse:collapse; font-size:8.8pt; margin:3pt 0 6pt; break-inside:avoid; }
+  table.flow { break-inside:auto; } table.flow tr { break-inside:avoid; } table.flow thead { display:table-header-group; }
+  th { text-align:left; font-size:7.6pt; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); border-bottom:1.5px solid var(--ink); padding:3pt 6pt; }
+  td { padding:3.5pt 6pt; border-bottom:1px solid var(--line); vertical-align:top; }
+  .os { display:grid; grid-template-columns:1fr 1fr 1fr; gap:6pt; margin:5pt 0 7pt; break-inside:avoid; }
+  .os div { border:1px solid var(--line); border-radius:6px; padding:6pt 8pt; font-size:8.9pt; }
+  .os b { display:block; margin-bottom:2pt; font-size:9.4pt; }
+  .report { background:var(--code-bg); color:var(--code-ink); border-radius:6px; padding:8pt 11pt; font-size:8.2pt; line-height:1.36; white-space:pre; break-inside:avoid; margin:5pt 0 7pt; font-family:"SF Mono", Menlo, Consolas, monospace; }
+  .report .g { color:#4ade80; } .report .b { font-weight:700; color:#fff; } .report .d { color:#8ea0b8; }
+  .two { display:grid; grid-template-columns:1fr 1fr; gap:8pt; }
+  footer { margin-top:12pt; padding-top:6pt; border-top:1px solid var(--line); font-size:8pt; color:var(--muted); display:flex; justify-content:space-between; }
+  .small { font-size:8.7pt; color:var(--muted); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="kicker">Attendee preparation guide</div>
+  <h1>Agentic Mobile QA — before you arrive</h1>
+  <p class="sub">A 3-hour hands-on workshop. Everything runs locally on your machine: an Android emulator, Appium, and an LLM served by Ollama.</p>
+  <div class="chips">
+    <span class="chip">⏳ Do this 4–5 days ahead</span>
+    <span class="chip">🔑 No API key needed</span>
+    <span class="chip">💻 macOS · Linux · Windows + WSL2</span>
+    <span class="chip">⚡ One command installs everything</span>
+  </div>
+</header>
+
+<div class="callout">
+  <p><b>Please finish this before the session — and verify it.</b></p>
+  <p>The setup downloads about 10 GB (an Android system image, a 4.9 GB language model, a JDK) and takes 20–40 minutes on good Wi-Fi. The 25-minute setup block on the day is for fixing stragglers, not first-time installs. If you arrive without the green report from §3, you will not be able to follow the hands-on labs.</p>
+</div>
+
+<section>
+  <h2><span class="n">1</span>💻 Hardware &amp; accounts</h2>
+  <ul class="check">
+    <li><b>macOS</b> (Apple Silicon or Intel), <b>Linux</b>, or <b>Windows 11 + WSL2</b></li>
+    <li><b>≥ 16 GB RAM</b> — the emulator and the 8B model both run locally. 8 GB will struggle.</li>
+    <li><b>~20 GB free disk</b> — Android system image, emulator, JDK, llama3.1 (4.9 GB), node_modules, the demo app</li>
+    <li>A <b>GitHub account</b> — read access is enough (used in the CI chapter)</li>
+  </ul>
+</section>
+
+<section>
+  <h2><span class="n">2</span>⚡ Install everything with one command</h2>
+  <p>Open a terminal and paste this line. It installs — or repairs — the whole toolchain, clones the workshop repository to <code>~/droid-detective</code>, downloads the demo app and the model, and prints a report at the end.</p>
+<pre class="big"><code>curl -fsSL https://raw.githubusercontent.com/QA-Olympians-Academy/droid-detective/main/setup.sh | bash</code></pre>
+  <div class="os">
+    <div><b>🍎 macOS</b>Install <b>Homebrew</b> first if <code>brew --version</code> fails: paste the one-line command from <b>brew.sh</b>, then open a <em>new</em> terminal and run the command above. Nothing needs <code>sudo</code>.</div>
+    <div><b>⊞ Windows</b>Install WSL2: in an <em>administrator</em> PowerShell run <code>wsl --install</code>, reboot, open the <b>Ubuntu</b> app and run the command <em>there</em> — not in PowerShell. The emulator needs Windows 11 with nested virtualization (see §6).</div>
+    <div><b>🐧 Linux</b>Nothing to prepare. It asks for your <code>sudo</code> password once (Ollama's installer). The emulator needs <code>/dev/kvm</code> — on Ubuntu: <code>sudo apt install qemu-kvm</code> and add yourself to the <code>kvm</code> group.</div>
+  </div>
+  <div class="two">
+    <div>
+      <p><b>What it installs</b> <span class="small">(skipping anything you already have)</span></p>
+      <ul class="plain">
+        <li>Node.js 20+ and pnpm 10</li>
+        <li>JDK 17</li>
+        <li>Android SDK: platform-tools, emulator, platform 34, build-tools 34.0.0, system image</li>
+        <li>The <code>workshop_avd</code> emulator (Pixel 6, API 34)</li>
+        <li>Appium 3 with the UiAutomator2 driver</li>
+        <li>AppClaw CLI (<code>@appclaw/cli</code>)</li>
+        <li>Ollama, running as a background service, and the <code>llama3.1</code> model</li>
+        <li>The repo, its dependencies, the demo APK and <code>.env</code></li>
+        <li><code>JAVA_HOME</code>, <code>ANDROID_HOME</code> and <code>PATH</code> in your shell profile</li>
+      </ul>
+    </div>
+    <div>
+      <p><b>Good to know</b></p>
+      <ul class="plain">
+        <li><b>Re-run it any time.</b> Every step is idempotent — it only does what is still missing, so a failed download is fixed by running the same command again.</li>
+        <li><b>Already have Android Studio?</b> Its SDK at the default location is reused; only the missing packages are added.</li>
+        <li><b>Already have Node / a JDK?</b> Kept, as long as they are Node 20+ and JDK 17+.</li>
+        <li><b>Prefer to install by hand?</b> Follow §0 of <code>docs/PLAYBOOK-3H.md</code> in the repo, then finish with <code>./setup.sh --check</code>. Mind the two traps in §5.</li>
+        <li><b>Open a new terminal</b> when it finishes — the environment variables land in <code>~/.zshrc</code> or <code>~/.bashrc</code>.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">3</span>✅ The report — what green looks like</h2>
+  <p>The installer ends with this report. <b>Every line must show ✓.</b> Screenshot it — that is your ticket into the hands-on labs. Re-print it any time with <code>cd ~/droid-detective &amp;&amp; ./setup.sh --check</code>.</p>
+<div class="report"><span class="b">▶ Environment report</span>
+  <span class="g">✓</span>  Node.js                  v24.20.0
+  <span class="g">✓</span>  pnpm                     10.28.0
+  <span class="g">✓</span>  JDK                      17.0.19  /opt/homebrew/opt/openjdk@17
+  <span class="g">✓</span>  adb                      37.0.1-15733141
+  <span class="g">✓</span>  emulator                 version 37.1.11.0
+  <span class="g">✓</span>  platform android-34      present
+  <span class="g">✓</span>  build-tools 34.0.0       aapt2 present
+  <span class="g">✓</span>  system image             android-34 google_apis arm64-v8a
+  <span class="g">✓</span>  AVD workshop_avd         present
+  <span class="g">✓</span>  Appium                   3.7.0
+  <span class="g">✓</span>  UiAutomator2 driver      installed
+  <span class="g">✓</span>  AppClaw CLI              2.7.0
+  <span class="g">✓</span>  Ollama                   0.31.1 · server up
+  <span class="g">✓</span>  model llama3.1           present
+  <span class="g">✓</span>  repo                     /Users/you/droid-detective
+  <span class="g">✓</span>  node_modules             installed
+  <span class="g">✓</span>  apps/demo.apk            129M
+  <span class="g">✓</span>  .env                     present
+
+  <span class="g b">✅ All green.</span> Screenshot this and bring it to the workshop.
+  <span class="d">Next: ./setup.sh --boot  then  pnpm test   (from /Users/you/droid-detective)</span></div>
+  <p class="small">A ✗ line names what is missing and how to fix it; in almost every case the fix is simply to run the install command again. A ⚠ line is a warning you should read, not a blocker.</p>
+</section>
+
+<section>
+  <h2><span class="n">4</span>🚀 Boot the emulator and run the smoke test</h2>
+  <p>This is the state you should arrive in: emulator up, the test suite installing the app and running.</p>
+<pre><code>cd ~/droid-detective
+./setup.sh --boot        <span class="c"># starts workshop_avd and waits until Android has booted</span>
+pnpm test                <span class="c"># installs the demo app on the emulator and runs the specs</span></code></pre>
+  <div class="callout ok">
+    <p><b>Green condition</b> — <code>--boot</code> ends with <code>emulator-5554 device</code>, and <code>pnpm test</code> <b>starts, installs the app, and runs specs</b>.</p>
+    <p>Some assertions <em>may fail</em> — that is fine and expected. The point is that the stack works end to end.</p>
+  </div>
+  <p class="small">Leave the emulator running or close it — <code>./setup.sh --boot</code> is all you need on the day. On Linux inside WSL2 without <code>systemd</code>, start Ollama in a second terminal with <code>ollama serve</code> before running the report.</p>
+</section>
+
+<section>
+  <h2><span class="n">5</span>🧰 What gets installed, where — and the two traps</h2>
+  <p class="small">For reference, and for anyone installing by hand. The installer's report checks every row.</p>
+  <table>
+    <thead><tr><th>Tool</th><th>Version</th><th>Where the installer puts it</th><th>Verify</th></tr></thead>
+    <tbody>
+      <tr><td>Node.js · pnpm</td><td>20+ · 10</td><td>macOS: Homebrew <code>node@24</code> · Linux: <code>~/.local/node</code></td><td><code>node -v</code> · <code>pnpm -v</code></td></tr>
+      <tr><td>JDK</td><td>17</td><td>macOS: <code>brew install openjdk@17</code> · Linux: <code>~/.local/jdk-17</code></td><td><code>java -version</code></td></tr>
+      <tr><td>Android SDK</td><td>platform 34 · build-tools 34.0.0 · emulator · system image</td><td>macOS: <code>~/Library/Android/sdk</code> · Linux: <code>~/Android/Sdk</code> (an Android Studio SDK there is reused)</td><td><code>adb --version</code> · <code>emulator -version</code></td></tr>
+      <tr><td>Emulator AVD</td><td>Pixel 6 · API 34</td><td><code>workshop_avd</code> — arm64-v8a on Apple Silicon, x86_64 elsewhere</td><td><code>emulator -list-avds</code></td></tr>
+      <tr><td>Appium + UiAutomator2</td><td>3.x</td><td>global npm package · driver in <code>~/.appium</code></td><td><code>appium driver list --installed</code></td></tr>
+      <tr><td>AppClaw CLI</td><td>2.x</td><td>global npm package <code>@appclaw/cli</code></td><td><code>appclaw --version</code></td></tr>
+      <tr><td>Ollama + llama3.1</td><td>—</td><td>macOS: Homebrew service · Linux: system service · model in <code>~/.ollama</code></td><td><code>ollama list</code></td></tr>
+      <tr><td>Repo · deps · APK · .env</td><td>—</td><td><code>~/droid-detective</code> (or the clone you run it from)</td><td><code>./setup.sh --check</code></td></tr>
+      <tr><td>Environment variables</td><td>—</td><td>a marked block in <code>~/.zshrc</code> / <code>~/.bashrc</code></td><td><code>echo $ANDROID_HOME</code></td></tr>
+    </tbody>
+  </table>
+  <div class="callout warn">
+    <p><b>⚠️ Two traps that cost people an evening if they install by hand</b></p>
+    <p><b>macOS JDK:</b> do not use <code>brew install --cask temurin</code> — it runs a <code>.pkg</code> installer that needs <code>sudo</code>. Use <code>brew install openjdk@17</code> (a formula) and set <code>JAVA_HOME=$(brew --prefix openjdk@17)</code>.</p>
+    <p><b>AppClaw:</b> install the scoped <code>@appclaw/cli</code> (2.x). The old unscoped <code>appclaw</code> package is deprecated and fails with <code>ETARGET / No matching version found for df-vision@1.1.79</code>.</p>
+  </div>
+</section>
+
+<section>
+  <h2><span class="n">6</span>🩹 If something breaks</h2>
+  <table class="flow">
+    <thead><tr><th style="width:42%">Symptom</th><th>Fix</th></tr></thead>
+    <tbody>
+      <tr><td><code>Homebrew is required on macOS</code></td><td>Install it from brew.sh, open a new terminal, run the install command again.</td></tr>
+      <tr><td><code>✗ step failed: …</code></td><td>Read the error printed just above it (usually a dropped download or a declined <code>sudo</code>), then run the same command again — it resumes where it stopped.</td></tr>
+      <tr><td><code>bash: command not found</code> / <code>Unsupported OS</code> on Windows</td><td>You are in PowerShell or Git Bash. Open the <b>Ubuntu</b> (WSL2) app and run it there.</td></tr>
+      <tr><td><code>no /dev/kvm</code> — emulator dead-slow or will not start</td><td>Linux: <code>sudo apt install qemu-kvm &amp;&amp; sudo adduser $USER kvm</code>, log out and in. WSL2: add <code>nestedVirtualization=true</code> under <code>[wsl2]</code> in <code>%UserProfile%\.wslconfig</code>, then <code>wsl --shutdown</code> — or run the emulator in Android Studio on the Windows side.</td></tr>
+      <tr><td><code>adb</code> / <code>emulator</code>: command not found in a new terminal</td><td>The variables were written to <code>~/.zshrc</code> or <code>~/.bashrc</code>, whichever your login shell uses. <code>source</code> it, or use <code>./setup.sh --boot</code> which does not need them.</td></tr>
+      <tr><td><code>Unknown AVD name [workshop_avd]</code></td><td>Run the install command again (it creates the AVD), or <code>./setup.sh --boot</code>.</td></tr>
+      <tr><td><code>adb: no devices/emulators found</code></td><td>Emulator not booted — <code>./setup.sh --boot</code>; or <code>adb kill-server &amp;&amp; adb start-server</code>.</td></tr>
+      <tr><td><code>Could not find 'aapt2'</code></td><td>build-tools 34.0.0 is missing — run the install command again.</td></tr>
+      <tr><td><code>Could not find a driver for 'UiAutomator2'</code></td><td><code>export APPIUM_HOME=$HOME/.appium</code>, then <code>appium driver install uiautomator2</code>.</td></tr>
+      <tr><td>Ollama hangs or is very slow</td><td>First load into RAM — run <code>ollama run llama3.1</code> once beforehand and close other apps.</td></tr>
+      <tr><td>AppClaw: <code>model 'llama3.2' not found</code></td><td>You launched it outside the repo root, so <code>.env</code> was not loaded — run from <code>~/droid-detective</code>.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<div class="callout">
+  <p><b>🎒 On the day, bring</b></p>
+  <p>Your laptop with the green report from §3 and the emulator booting · your charger · a GitHub login you can actually sign into. If you get stuck on any step, send the failing command and its full output ahead of the session — that is far quicker than debugging it in the room.</p>
+</div>
+
+<footer><span>Agentic Mobile QA · attendee preparation guide</span><span>Everything runs locally — no cloud LLM key required.</span></footer>
+</body>
+</html>

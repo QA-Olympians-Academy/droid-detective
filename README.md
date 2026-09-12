@@ -19,16 +19,30 @@ The goal is to demonstrate how an AI agent can reduce the friction of writing mo
 
 ## Prerequisites
 
+**One command** installs or repairs the whole toolchain (macOS, Linux, Windows via WSL2), clones
+the repo, fetches the demo APK and prints a verification report:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/QA-Olympians-Academy/droid-detective/main/setup.sh | bash
+```
+
+From a clone: `./setup.sh` (install/repair), `./setup.sh --check` (verify only),
+`./setup.sh --boot` (start the workshop emulator). It is idempotent and reuses whatever you
+already have. What it installs:
+
 | Tool | Version | Notes |
 |------|---------|-------|
 | Node.js | 20+ | |
-| pnpm | 10.28+ | `npm i -g pnpm` |
-| Java (JDK) | 11+ | Required by Android SDK |
-| Android SDK | any | `ANDROID_HOME` must be set |
-| Android emulator | API 30+ | Or a real device via ADB |
-| Appium MCP server | latest | For the `/appium-locators` skill |
+| pnpm | 10 | pinned via `packageManager` |
+| JDK | 17 | macOS: `brew install openjdk@17` (the formula, not the cask) |
+| Android SDK | platform 34 · build-tools 34.0.0 · emulator · `google_apis` system image | `ANDROID_HOME` is set by the installer |
+| Emulator AVD | `workshop_avd` — Pixel 6, API 34 | |
+| Appium + UiAutomator2 driver | 3.x | global; the driver lives in `~/.appium` |
+| AppClaw CLI | `@appclaw/cli` 2.x | the unscoped `appclaw` 1.x is deprecated |
+| Ollama + `llama3.1` | — | the local model — no cloud API key needed |
+| Appium MCP server | latest | only for the `/appium-locators` skill (see below) |
 
-Install the UIAutomator2 driver once after cloning:
+Manual route: [docs/PLAYBOOK-3H.md §0](docs/PLAYBOOK-3H.md). The UIAutomator2 driver by hand:
 
 ```bash
 pnpm run appium:install-driver
@@ -43,6 +57,7 @@ pnpm install
 ```
 
 Drop your `.apk` into the `apps/` folder. The default config expects `apps/demo.apk`.
+`setup.sh` does both, and downloads the WebdriverIO native demo app as `apps/demo.apk`.
 
 ---
 
