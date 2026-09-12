@@ -26,10 +26,14 @@ jobs:
     env:
       SKIP_MODEL: '1'                                   # the 4.9 GB pull is the one step that cannot drift
       WORKSHOP_DIR: ${{ github.workspace }}             # the checkout is the clone
-      ANDROID_HOME: ${{ runner.temp }}/android-sdk      # ignore the runner's preinstalled SDK — download like a student
       SHELL: /bin/bash                                  # profile block goes to ~/.bashrc
     steps:
       - uses: actions/checkout@v4
+
+      # Ignore the runner's preinstalled SDK — download it like a student would.
+      # (`runner` context is not allowed in job-level env, hence GITHUB_ENV.)
+      - name: Use a fresh Android SDK location
+        run: echo "ANDROID_HOME=$RUNNER_TEMP/android-sdk" >> "$GITHUB_ENV"
 
       - name: Enable KVM for the emulator (Linux)
         if: runner.os == 'Linux'
