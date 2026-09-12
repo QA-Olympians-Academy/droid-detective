@@ -4,14 +4,14 @@
  * One function: send the conversation + tool definitions, get the model's
  * next message back. Works against any OpenAI-compatible endpoint.
  *
- * Defaults to a local Ollama server running llama3.1 — no env vars needed:
+ * Defaults to a local Ollama server running llama3.2:3b — no env vars needed:
  *
- *   ollama pull llama3.1   # once
- *   ollama serve           # if not already running
+ *   ollama pull llama3.2:3b   # once
+ *   ollama serve              # if not already running
  *
  * Override with env vars for another model or a hosted provider:
  *
- *   Other Ollama model : export LLM_MODEL=qwen2.5
+ *   Other Ollama model : export LLM_MODEL=llama3.1   (or qwen2.5)
  *   OpenRouter         : export LLM_BASE_URL=https://openrouter.ai/api/v1 OPEN_ROUTER_API_KEY=sk-... LLM_MODEL=openai/gpt-4o
  *
  * Mirrors `bot/ai/providers/open-router.ts`, kept standalone so this example
@@ -31,7 +31,7 @@ const client = new OpenAI({
   apiKey: process.env.LLM_API_KEY || process.env.OPEN_ROUTER_API_KEY || OLLAMA_API_KEY,
 });
 
-export const MODEL = process.env.LLM_MODEL || 'llama3.1';
+export const MODEL = process.env.LLM_MODEL || 'llama3.2:3b';
 
 export const think = async (
   contents: ChatCompletionMessageParam[],
