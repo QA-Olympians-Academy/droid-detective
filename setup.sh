@@ -22,6 +22,7 @@
 #                      or the current clone when run from inside one)
 #    ANDROID_HOME      Android SDK location         (default: ~/Library/Android/sdk
 #                      on macOS, ~/Android/Sdk on Linux)
+#    ANDROID_AVD_HOME  where the emulator AVD lives    (default: ~/.android/avd)
 #    WORKSHOP_MIRROR   directory with pre-downloaded big files — see "Mirror"
 #    SKIP_MODEL=1      do not pull the LLM (2.0 GB)
 #    LLM_MODEL         model to pull                (default: llama3.2:3b)
@@ -82,6 +83,13 @@ detect_platform() {
     ANDROID_HOME="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Android/Sdk}}"
   fi
   export ANDROID_HOME ANDROID_SDK_ROOT="$ANDROID_HOME"
+  # avdmanager picks its AVD folder from a chain of variables (ANDROID_USER_HOME,
+  # ANDROID_PREFS_ROOT, ANDROID_SDK_HOME, an already existing $XDG_CONFIG_HOME/.android
+  # — the last one is what GitHub's Ubuntu runners have) while the emulator and this
+  # script assume ~/.android/avd. Pin one folder for all three. ANDROID_AVD_HOME is
+  # honoured by every tool, but only if the directory already exists.
+  export ANDROID_AVD_HOME="${ANDROID_AVD_HOME:-${ANDROID_USER_HOME:-$HOME/.android}/avd}"
+  mkdir -p "$ANDROID_AVD_HOME" 2>/dev/null || true
   case "${SHELL:-}" in
     */zsh)  PROFILE="$HOME/.zshrc" ;;
     */bash) PROFILE="$HOME/.bashrc" ;;
@@ -312,16 +320,19 @@ ensure_sdk_packages() {
 
 yes_stream() { printf 'y\n%.0s' $(seq 1 64); }   # finite, so no SIGPIPE under pipefail
 avd_exists() {
-  [ -f "${ANDROID_AVD_HOME:-${ANDROID_USER_HOME:-$HOME/.android}/avd}/${AVD_NAME}.ini" ] && return 0
+  [ -f "$ANDROID_AVD_HOME/${AVD_NAME}.ini" ] && return 0
   [ -x "$ANDROID_HOME/emulator/emulator" ] && "$ANDROID_HOME/emulator/emulator" -list-avds 2>/dev/null | grep -qx "$AVD_NAME"
 }
 
 ensure_avd() {
-  step "Emulator AVD '$AVD_NAME' (Pixel 6 · API $API_LEVEL · $ABI)"
+  step "Emulator AVD '$AVD_NAME' (Pixel 6 · API $API_LEVEL · $ABI) in $ANDROID_AVD_HOME"
   if avd_exists; then ok "present"; return; fi
+  local out; out=$(mktemp)
   echo no | "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd \
-      -n "$AVD_NAME" -k "system-images;android-${API_LEVEL};google_apis;${ABI}" -d pixel_6 --force >/dev/null
-  avd_exists || die "AVD creation failed"
+      -n "$AVD_NAME" -k "system-images;android-${API_LEVEL};google_apis;${ABI}" -d pixel_6 --force >"$out" 2>&1 \
+      || { cat "$out" >&2; rm -f "$out"; die "avdmanager failed"; }
+  avd_exists || { cat "$out" >&2; rm -f "$out"; die "AVD creation failed — no ${AVD_NAME}.ini in $ANDROID_AVD_HOME"; }
+  rm -f "$out"
   ok "created"
 }
 
@@ -439,6 +450,7 @@ write_profile() {
     echo "export JAVA_HOME=\"$JAVA_HOME\""
     echo "export ANDROID_HOME=\"$ANDROID_HOME\""
     echo 'export ANDROID_SDK_ROOT="$ANDROID_HOME"'
+    echo "export ANDROID_AVD_HOME=\"$ANDROID_AVD_HOME\""
     [ -d "$HOME/.local/node/bin" ]  && echo 'export PATH="$HOME/.local/node/bin:$PATH"'
     [ -d "$HOME/.npm-global/bin" ]  && echo 'export PATH="$HOME/.npm-global/bin:$PATH"'
     local k; if k=$(keg_node) && [ "$(command -v node)" = "$k/node" ]; then echo "export PATH=\"$k:\$PATH\""; fi
@@ -469,7 +481,7 @@ report() {
   if [ -d "$ANDROID_HOME/platforms/android-${API_LEVEL}" ]; then row ok "platform android-$API_LEVEL" "present"; else row fail "platform android-$API_LEVEL" "missing"; fi
   if [ -x "$ANDROID_HOME/build-tools/${BUILD_TOOLS}/aapt2" ]; then row ok "build-tools $BUILD_TOOLS" "aapt2 present"; else row fail "build-tools $BUILD_TOOLS" "missing (Appium needs aapt2)"; fi
   if [ -f "$ANDROID_HOME/system-images/android-${API_LEVEL}/google_apis/${ABI}/system.img" ]; then row ok "system image" "android-$API_LEVEL google_apis $ABI"; else row fail "system image" "android-$API_LEVEL google_apis $ABI missing"; fi
-  if avd_exists; then row ok "AVD $AVD_NAME" "present"; else row fail "AVD $AVD_NAME" "not created"; fi
+  if avd_exists; then row ok "AVD $AVD_NAME" "$ANDROID_AVD_HOME"; else row fail "AVD $AVD_NAME" "not created"; fi
   if [ "$PLATFORM" = linux ]; then
     if [ -w /dev/kvm ]; then row ok "KVM" "/dev/kvm"; elif [ "$WSL" = 1 ]; then row warn "KVM" "no /dev/kvm in WSL2 — emulator must run on the Windows side"; else row fail "KVM" "no /dev/kvm — emulator will not be usable"; fi
   fi
@@ -532,7 +544,7 @@ boot() {
 }
 
 usage() {
-  if [ -n "${BASH_SOURCE[0]:-}" ] && [ -f "${BASH_SOURCE[0]}" ]; then sed -n '2,38p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,2\}//'
+  if [ -n "${BASH_SOURCE[0]:-}" ] && [ -f "${BASH_SOURCE[0]}" ]; then sed -n '2,39p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,2\}//'
   else echo "usage: setup.sh [--check | --boot | --help]   (see the header of setup.sh for the environment knobs)"; fi
 }
 
