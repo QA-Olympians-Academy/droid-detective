@@ -57,9 +57,17 @@ export const config: Options.Testrunner = {
     framework: 'mocha',
     reporters: ['spec'],
 
+    // Mocha grep filter, set via env like WDIO_EXCLUDE above. WDIO_GREP is a
+    // regex matched against the full test title (e.g. the setup-check workflow
+    // runs only the Home Screen block as its smoke test); WDIO_INVERT=1 flips
+    // it to "run everything EXCEPT the matches".
     mochaOpts: {
         ui: 'bdd',
-        timeout: 60000
+        timeout: 60000,
+        ...(process.env.WDIO_GREP ? {
+            grep: process.env.WDIO_GREP,
+            invert: process.env.WDIO_INVERT === '1'
+        } : {})
     },
 
     // On a failed test, capture the LIVE DOM of the screen the failure happened on

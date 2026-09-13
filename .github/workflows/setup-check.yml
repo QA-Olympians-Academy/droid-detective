@@ -56,13 +56,17 @@ jobs:
       - name: Boot the emulator and run the smoke test (Linux has KVM)
         if: runner.os == 'Linux'
         env:
-          WDIO_EXCLUDE: specs/example.spec.ts
+          # Smoke test = only the "Home Screen" describe block of example.spec.ts
+          # (app installs, launches, home screen + tabs render). Everything else —
+          # including the intentionally broken Swipe Screen (staged self-healing
+          # demo) — is left out, so `pnpm test` must go green.
+          WDIO_EXCLUDE: specs/untested-screens.spec.ts
+          WDIO_GREP: ^WDIO Demo App Home Screen
         run: |
           eval "$(sed -n '/^# >>> droid-detective workshop/,/^# <<< droid-detective workshop/p' ~/.bashrc)"
           HEADLESS=1 ./setup.sh --boot
           # PLAYBOOK §0.8 green condition: the suite starts, installs the app, runs specs.
-          # Some assertions fail by design (staged healer demo), so only the install is asserted.
-          pnpm test || echo "::warning::pnpm test had failing specs — expected; asserting the app got installed"
+          pnpm test
           adb shell pm list packages | grep -q com.wdiodemoapp && echo "✓ demo app installed on the emulator"
 
       - name: Diagnostics (only when a step above failed)
