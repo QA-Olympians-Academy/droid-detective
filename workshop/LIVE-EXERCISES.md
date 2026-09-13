@@ -22,7 +22,7 @@ so run **one** of Live 9 / 10 / 11.
 | 01:15 | 5 | [Predict the loop, then run it](05-execution-loop/exercises/live.md) | 5 min | laptop + emulator | predict turns, run one agentic goal |
 | 01:55 | 6 | [Heal it offline, then break the healer](06-self-healing/exercises/live.md) | 5 min | **laptop only** | run the offline healer, read the diff |
 | 02:25 | 7 | [Find the step that should have paged you](07-observability/exercises/live.md) | 4 min | trace on screen | spot the confidence drop in a green run |
-| 02:40 | 8 | [Write the goal before I do](08-e2e-demo/exercises/live.md) | 3 min | paper | write the goal + assertions before the demo |
+| 02:40 | 8 | [Brief the skill before I do](08-appclaw-skills/exercises/live.md) | 3 min | paper | write the flow request + done-condition before the skill runs |
 | 02:55 | 9 | [What does CI do here?](09-ci-github/exercises/live.md) | 2 min | room vote | three failure scenarios → heal / issue / blocked |
 | 02:55 | 10 | [Pick one, name the barrier](10-future-outlook/exercises/live.md) | 3 min | paper | choose a direction, name the trust barrier |
 | 02:55 | 11 | [Three lines before you leave](11-qa-games/exercises/live.md) | 2 min | paper | try / question / surprise |
@@ -67,7 +67,7 @@ internal repeat, or homework:
 | 5 | [5a](05-execution-loop/exercises/exercise-5a.md) · [5b — Run the Bot](05-execution-loop/exercises/exercise-5b.md) (needs LambdaTest) | 15 min |
 | 6 | [6 — Break → watch → heal](06-self-healing/exercises/exercise-6.md) | 20 min |
 | 7 | [7 — Read a reasoning trace](07-observability/exercises/exercise-7.md) | 20 min |
-| 8 | [8 — Narrative goal to running spec](08-e2e-demo/exercises/exercise-8.md) | 20 min |
+| 8 | [8 — Generate, break and repair a flow with skills](08-appclaw-skills/exercises/exercise-8.md) | 20 min |
 | 9 | [9a](09-ci-github/exercises/exercise-9a.md) · [9b](09-ci-github/exercises/exercise-9b.md) | 15 min |
 | 11 | [Locator Quiz](11-qa-games/games/locator-quiz.md) · [Fix the Broken Test](11-qa-games/games/fix-the-test.md) · [Selector Bingo](11-qa-games/games/selector-bingo.md) | 8–10 min each |
 

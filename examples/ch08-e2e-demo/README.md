@@ -26,4 +26,4 @@ spec on `emulator-5554` — same as `pnpm test` for the main suite in
 - The failure path is a first-class test, not an afterthought.
 - The page object owns the locators; the spec owns the intent.
 
-Theory and exercises: [workshop/08-e2e-demo](../../workshop/08-e2e-demo/README.md)
+Chapter 8 now covers the AppClaw skills: [workshop/08-appclaw-skills](../../workshop/08-appclaw-skills/README.md). This spec stays as the end-to-end reference for the `/appium-locators` → page object → spec path.

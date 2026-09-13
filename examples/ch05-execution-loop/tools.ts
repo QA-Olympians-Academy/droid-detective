@@ -24,7 +24,7 @@ export const elementActionTool: ChatCompletionTool = {
   function: {
     name: 'element_action',
     description:
-      'Perform an action on an element in the mobile app. ' +
+      'Perform ONE action on ONE element of the mobile app, then wait for the new page source. ' +
       'Prioritize BUTTONS, INPUTS, and TEXT FIELDS when possible.',
     parameters: {
       type: 'object',
@@ -32,12 +32,12 @@ export const elementActionTool: ChatCompletionTool = {
         element_identifier: {
           type: 'string',
           description:
-            'Element selector, by priority:\n' +
-            '1. PREFERRED: accessibility id when available (e.g. `~login-button`)\n' +
-            '2. GOOD: resource-id XPath (e.g. `//*[@resource-id="btn_login"]`)\n' +
-            '3. GOOD: text XPath (e.g. `//*[contains(@text, "Submit")]`)\n' +
-            '4. LAST RESORT: class-based XPath.\n' +
-            'Copy attribute values VERBATIM from the page source — never invent them.',
+            'How to name the element, copied VERBATIM from the page source:\n' +
+            '1. PREFERRED: the content-desc value with a ~ prefix, e.g. `~input-email`\n' +
+            '2. if it has no content-desc: its visible text as `text=LOGIN`\n' +
+            '3. if neither: its resource-id, e.g. `android:id/button1`\n' +
+            '4. LAST RESORT: XPath, e.g. `//android.widget.Button[@text="OK"]`.\n' +
+            'Never invent names — if it is not in the page source, it does not exist.',
         },
         action: {
           type: 'string',
@@ -49,6 +49,7 @@ export const elementActionTool: ChatCompletionTool = {
           description: 'The value to set on the element (required for set_text)',
         },
       },
+      required: ['element_identifier', 'action'],
     },
   },
 };
@@ -57,11 +58,11 @@ export const waitTool: ChatCompletionTool = {
   type: 'function',
   function: {
     name: 'wait',
-    description: 'Wait for a specified number of seconds (default 1-3) for the UI to settle.',
+    description: 'Wait 1-3 seconds for the UI to settle (dialogs, animations) before the next look.',
     parameters: {
       type: 'object',
       properties: {
-        seconds: { type: 'number', description: 'The number of seconds to wait' },
+        seconds: { type: 'number', description: 'The number of seconds to wait (max 3)' },
       },
     },
   },
@@ -72,14 +73,15 @@ export const writeTestResultTool: ChatCompletionTool = {
   function: {
     name: 'write_test_result',
     description:
-      'Report the final verdict once the goal is reached or clearly impossible. ' +
-      'Calling this ends the test.',
+      'Report the final verdict. Call it ALONE in its own step, only after the page source shows ' +
+      'the outcome (e.g. a success message or the expected screen). Calling this ends the test.',
     parameters: {
       type: 'object',
       properties: {
-        message: { type: 'string', description: 'The test result message' },
-        success: { type: 'boolean', description: 'Whether the test was successful' },
+        message: { type: 'string', description: 'What you see on screen that proves the verdict' },
+        success: { type: 'boolean', description: 'Whether the goal was reached' },
       },
+      required: ['message', 'success'],
     },
   },
 };

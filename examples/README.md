@@ -10,7 +10,7 @@ current chapter onward is replaced with typed stubs (+ TODOs) to implement live.
 | [ch05-execution-loop](ch05-execution-loop/) | [5 — The Execution Loop](../workshop/05-execution-loop/README.md) | emulator + LLM | `pnpm exec ts-node examples/ch05-execution-loop/run.ts` |
 | [ch06-self-healing](ch06-self-healing/) | [6 — Self-Healing](../workshop/06-self-healing/README.md) | nothing (offline) | `node examples/ch06-self-healing/self-healer.js` |
 | [ch07-observability](ch07-observability/) | [7 — Observability](../workshop/07-observability/README.md) | nothing (offline) | `pnpm exec ts-node examples/ch07-observability/run.ts` |
-| [ch08-e2e-demo](ch08-e2e-demo/) | [8 — End-to-End Demo](../workshop/08-e2e-demo/README.md) | emulator | `pnpm test -- --spec examples/ch08-e2e-demo/login.spec.ts` |
+| [ch08-e2e-demo](ch08-e2e-demo/) | [8 — AppClaw Skills](../workshop/08-appclaw-skills/README.md) (end-to-end reference spec) | emulator | `pnpm test -- --spec examples/ch08-e2e-demo/login.spec.ts` |
 | [ch09-agent-ci](ch09-agent-ci/) | [9 — CI with GitHub Actions](../workshop/09-ci-github/README.md) | Ollama | `node examples/ch09-agent-ci/review-locators.js` |
 
 Chapters 1–3 (story, architecture, setup), 10 and 11 are talk/quiz chapters

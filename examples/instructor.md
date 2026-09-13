@@ -22,9 +22,9 @@ emulator -avd <your-avd> &
 adb devices                             # expect: emulator-5554   device
 # local model for ch6/ch9 (and $0-cost demos):
 ollama pull llama3.1
-# LLM for ch5 live runs — pick one:
-export LLM_BASE_URL=https://openrouter.ai/api/v1 OPEN_ROUTER_API_KEY=sk-...
-# export LLM_BASE_URL=http://localhost:11434/v1 LLM_API_KEY=ollama LLM_MODEL=qwen2.5
+# LLM for ch5 live runs — default is local Ollama + llama3.1 (nothing to export, ~10 s/step);
+# for a snappier demo (2-4 s/step) point it at OpenRouter instead:
+# export LLM_BASE_URL=https://openrouter.ai/api/v1 OPEN_ROUTER_API_KEY=sk-... LLM_MODEL=openai/gpt-4o
 # AppClaw CLI is a global install — verify it, then smoke the flow:
 appclaw --version || npm i -g @appclaw/cli
 pnpm claw:flow flows/login.yaml

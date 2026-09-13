@@ -85,7 +85,7 @@ By the end, each participant can:
 
 - Observability in one line: reasoning traces + confidence scoring surface flaky steps before they fail.
 - CI in one line: AppClaw YAML flows (no LLM) as first gate, then WDIO specs with healing on failure.
-- Point to the full course for E2E, CI wiring, multi-agent. Take 1–2 questions. Close.
+- Point to the full course for the AppClaw skills, CI wiring, multi-agent. Take 1–2 questions. Close.
 
 ---
 
@@ -97,7 +97,7 @@ By the end, each participant can:
 | Playground recording (Ch5) | **Cut** |
 | The Bot / LambdaTest (Ch5) | **Cut** — referenced only |
 | Observability (Ch7) | Reduced to one sentence |
-| End-to-end live demo (Ch8) | **Cut** |
+| AppClaw skills demo (Ch8) | **Cut** |
 | CI integration (Ch9) | Reduced to one sentence |
 | Future Outlook + Games (Ch10/11) | **Cut** |
 

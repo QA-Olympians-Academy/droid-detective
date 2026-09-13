@@ -184,7 +184,7 @@ stack works). Students should arrive at this state.
 | 01:45 | *Break* | — | — |
 | 01:55 | **Self-healing** (break → heal → green) | Hands-on | ✅ everyone saw a heal |
 | 02:25 | Observability (reasoning traces, confidence) | Demo | — |
-| 02:40 | End-to-end demo (goal → locators → spec → result) | Live demo | — |
+| 02:40 | AppClaw skills demo (brief the skill → plan → flow → strict run) | Live demo | — |
 | 02:55 | CI + wrap-up + Q&A | Talk | — |
 
 ### Block detail & instructor cues

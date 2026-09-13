@@ -128,5 +128,5 @@ Failing: ~cart-total → DOM: [paste DOM excerpt]
 | AppClaw plain-English prompts | Zero-shot |
 | `bot/prompt-templates/SystemPrompt.hbs` | Zero-shot + domain context |
 | `heal-and-retry.js` healing prompt | Chain-of-Thought |
-| `.claude/generate-appclaw-flow/SKILL.md` | Single-shot (the Example section) |
-| `.claude/appium-locators/SKILL.md` | Single-shot |
+| `.claude/skills/generate-appclaw-flow/SKILL.md` | Single-shot (the Example section) |
+| `.claude/skills/appium-locators/SKILL.md` | Single-shot |

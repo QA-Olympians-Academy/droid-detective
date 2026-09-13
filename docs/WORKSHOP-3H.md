@@ -36,7 +36,7 @@ By the end of the session, each participant can:
 | 01:45 | *Break* | — | 10 min | ☕ |
 | 01:55 | **Self-healing** — break → watch → heal → retry | Ch6 | 30 min | Hands-on |
 | 02:25 | **Observability** — reasoning traces & confidence signals | Ch7 | 15 min | Demo |
-| 02:40 | **End-to-end demo** — goal → locators → plan → spec → result | Ch8 | 15 min | Live demo |
+| 02:40 | **AppClaw skills demo** — brief the skill → plan → flow → strict run | Ch8 | 15 min | Live demo |
 | 02:55 | **CI + wrap-up + Q&A** — where this lives in CI, next steps | Ch9/10/11 | 5 min | Talk + Q&A |
 | 03:00 | End | | | |
 
@@ -112,12 +112,12 @@ By the end of the session, each participant can:
 - **Demo:** open a real reasoning trace, spot a low-confidence step, explain the fix.
 - Takeaway: consistent low confidence across runs = flakiness candidate — fix the locator before it fails.
 
-### 02:40 — End-to-end demo (15 min) — LIVE DEMO
+### 02:40 — AppClaw skills demo (15 min) — LIVE DEMO
 *Full detail: WORKSHOP.md Chapter 8.*
 
-- Speaker drives the full workflow live: **goal → inspect (`/appium-locators`) → plan → execute (WDIO + POM) → observe.**
-- Hit the locator priority order (Accessibility ID → Resource ID → Text → structural XPath).
-- Show the two patterns that save people: the **getter pattern** (never cache references) and drag-with-long-press gestures.
+- Speaker drives `/generate-appclaw-flow` live in Claude Code: **brief the skill (appId + accessibility ids + done-condition) → it checks `flows/` and `.appclaw/env/` → proposes a plan → approve → run with `appclaw --flow … --strict`.**
+- Show the two boundaries: the skill writes nothing before a human reads the plan, and `/use-appclaw-cli` runs `--flow` freely but asks before any `appclaw "goal"` run.
+- Land the distinction: `SKILL.md` is read by Claude Code at authoring time; `.appclaw/guides/<appId>.md` is read by AppClaw's agent at run time. Skills change how flows are written, not how they run.
 
 ### 02:55 — CI, wrap-up & Q&A (5 min)
 *Full detail: WORKSHOP.md Chapters 9–11.*
@@ -139,7 +139,7 @@ By the end of the session, each participant can:
 | Ch5 Execution loop | Kept hands-on; Bot/LambdaTest **referenced only** |
 | Ch6 Self-healing | Kept as primary hands-on exercise |
 | Ch7 Observability | Compressed to a single demo |
-| Ch8 E2E demo | Speaker-driven live demo, no solo exercise |
+| Ch8 AppClaw skills | Speaker-driven live demo, no solo exercise |
 | Ch9 CI | Reduced to one summary slide |
 | Ch10 Future | **Cut** — referenced for self-study |
 | Ch11 Games | **Cut** — optional if time remains |

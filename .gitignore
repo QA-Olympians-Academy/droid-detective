@@ -10,3 +10,7 @@ appium.log
 dom-snapshots/
 .appclaw/*
 !.appclaw/guides/
+
+**/*.png
+
+**/*/*.py

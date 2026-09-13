@@ -22,7 +22,7 @@ This course guides you from a working Android environment to a fully agentic tes
 | 11:50 | **Ch6** — Self-Healing Test Design | 30 min |
 | 12:20 | **Ch7** — Agentic Observability for Mobile QA | 30 min |
 | 12:50 | *Lunch* | 60 min |
-| 13:50 | **Ch8** — Full End-to-End Demo: From High-Level Goal to Autonomous Test Execution | 45 min |
+| 13:50 | **Ch8** — AppClaw Skills: Teaching Claude Code to Drive AppClaw | 45 min |
 | 14:35 | **Ch9** — CI Integration with GitHub Actions | 30 min |
 | 15:05 | *Break* | 10 min |
 | 15:15 | **Ch10** — Future Outlook: Next-Gen Mobile QA Systems | 20 min |
@@ -540,114 +540,99 @@ See `workshop/07-observability/examples/reasoning-trace-example.md` for a full a
 
 ---
 
-## Chapter 8 — Full End-to-End Demo: From High-Level Goal to Autonomous Test Execution
+## Chapter 8 — AppClaw Skills: Teaching Claude Code to Drive AppClaw
 
-### The full workflow
+### Why skills
 
-```
-1. PROVIDE GOAL (plain English narrative)
-   "Log in, add item to cart, validate total"
-         │
-         ▼
-2. INSPECT (live DOM via Appium MCP)
-   /appium-locators apps/demo.apk
-   → Returns ranked locator map for every element
-         │
-         ▼
-3. PLAN (agent + Claude Code)
-   Given locators + goal → numbered step plan
-         │
-         ▼
-4. EXECUTE (WebdriverIO + POM)
-   /generate-wdio-spec → TypeScript spec
-   pnpm test → CI-ready output
-         │
-         ▼
-5. OBSERVE (reasoning trace + result)
-   Review trace — did the agent reason correctly?
-```
+Chapter 5 is the run-time half of "knowledge encoded in skills and prompts": AppClaw reads the screen, the flow file carries the steps. This chapter is the authoring half. A **skill** is a `SKILL.md` that Claude Code loads when a task matches it. It says how this team runs AppClaw: which commands and flags are real, what the YAML schema is, what to check before writing a file, when to ask first.
 
-### Step 1: Inspect with Appium MCP
+Skills run inside Claude Code, not on the local Ollama model. The flows they write then run with zero LLM calls.
+
+### Anatomy
 
 ```
-> Using mcp-appium, navigate to the Login screen
-  and list every element with its accessibility ID.
+.claude/skills/<name>/SKILL.md
+---
+name: generate-appclaw-flow          → the slash command
+description: >                       → the trigger: Claude loads the skill when a
+  Generate YAML flow files … Trigger    request matches this text, even without
+  when the user wants to create, edit,  the slash command
+  or fix a YAML flow file for AppClaw.
+---
+(instructions: workflow, schema, rules, examples)
 ```
 
-Or use the skill:
-```
-/appium-locators apps/demo.apk
-```
+### The skills in this project
 
-### Locator priority order
+| Skill | Source | Use it when |
+|-------|--------|-------------|
+| `/generate-appclaw-flow` | AppClaw repo | You want a new YAML flow, or a step fails to parse. Checks `flows/` and `.appclaw/env/`, proposes a plan, writes only after approval |
+| `/use-appclaw-cli` | AppClaw repo | A command or flow fails, or you need `.env` / env-file changes. Reads `.env`, the device list and `appclaw --help` before answering |
+| `/appium-locators <apk>` | this repo | You need real accessibility ids before writing steps (needs the Appium MCP server) |
+| `/review-changes` | AppClaw repo | Only when contributing to AppClaw itself; nothing to review in this repo |
 
-| Priority | Strategy | Format | Breaks when |
-|----------|----------|--------|------------|
-| ✅ 1st | Accessibility ID | `~contentDescription` | `contentDescription` renamed |
-| ✅ 2nd | Resource ID | `android=new UiSelector().resourceId(...)` | Resource ID renamed |
-| ⚠️ 3rd | Text | `//*[@text="OK"]` | Any copy change |
-| ❌ Last | Structural XPath | `//LinearLayout[2]` | Any layout change |
+The AppClaw skills are installed with the skills CLI into `.agents/skills/` and symlinked into `.claude/skills/`; `skills-lock.json` pins each skill's content hash so the whole room runs the same text:
 
-### Step 2: Plan
-
-```
-> Based on the locators, write a plan for testing that
-  drag-l1 can be placed in drop-l1 and the board can be reset.
+```bash
+npx skills add AppiumTestDistribution/appclaw   # install / reinstall
+npx skills list                                 # what is installed
+npx skills update                               # refresh SKILL.md files + lock
 ```
 
-A good plan includes:
-- Navigation steps for each screen transition
-- Timing notes (wait for element, not fixed pauses)
-- Specific assertions
-- At least one edge case
+Claude Code is the one tool `setup.sh` does not install: `npm install -g @anthropic-ai/claude-code`, then start `claude` in the repo root so `.claude/skills/` is found.
 
-### Step 3: Execute with WebdriverIO + POM
+### `/generate-appclaw-flow` — the workflow
 
-```typescript
-export default class BasePage {
-  protected async swipe(startX, startY, endX, endY, duration = 500) {
-    await browser
-      .action('pointer', { parameters: { pointerType: 'touch' } })
-      .move({ x: startX, y: startY }).down().pause(100)
-      .move({ duration, x: endX, y: endY }).up().perform()
-  }
-}
+```
+1. Understand   platform, appId, the journey, what "done" looks like
+2. Check        flows/ for overlap, .appclaw/env/ for variables and secrets
+3. Propose      path, flat vs phased, steps, env bindings   ── waits for approval ──
+4. Generate     writes the YAML
+5. Validate     parses it; offers to run on the connected device
 ```
 
-**The getter pattern — never cache element references:**
+Step 3 is the point of the skill: a flow drives a real device with no model in the loop, so nobody writes one that a human has not read. A good request supplies what the skill cannot know: the appId, the accessibility ids, the success text.
 
-```typescript
-// ✅ Fresh reference on every access
-get loginButton() { return $('~button-LOGIN') }
-
-// ❌ Cached — StaleElementReferenceException
-private loginButton = $('~button-LOGIN')
+```
+/generate-appclaw-flow
+App: com.wdiodemoapp on emulator-5554. Journey: open the Forms tab, type "hello" into
+the text input, verify the result label shows "hello". Known ids: tabs Home | Webview |
+Login | Forms | Swipe | Drag; input text-input; result label input-text-result.
+Phased format. File: flows/forms-text.yaml.
 ```
 
-### Gesture testing — drag with long-press
-
-```typescript
-async dragToDropZone(sourceSelector: string, dropSelector: string) {
-  const src = await $(sourceSelector)
-  const tgt = await $(dropSelector)
-  const srcLoc = await src.getLocation()
-  const srcSize = await src.getSize()
-  const tgtLoc = await tgt.getLocation()
-  const tgtSize = await tgt.getSize()
-
-  await browser
-    .action('pointer', { parameters: { pointerType: 'touch' } })
-    .move({ x: srcLoc.x + srcSize.width / 2, y: srcLoc.y + srcSize.height / 2 })
-    .down()
-    .pause(600)   // long press triggers drag recogniser
-    .move({ duration: 1000, x: tgtLoc.x + tgtSize.width / 2, y: tgtLoc.y + tgtSize.height / 2 })
-    .up().perform()
-}
+```bash
+pnpm run claw:flow flows/forms-text.yaml            # 0 LLM calls
+appclaw --flow flows/forms-text.yaml --strict       # fail instead of falling back to the LLM
 ```
+
+Strict mode fails on any step the parser does not recognise; without it such a step is handed to the slow local model. Every run writes `.appclaw/runs/<runId>/` with a `manifest.json`, a screenshot per step and a recording; `appclaw --report` serves them.
+
+### `/use-appclaw-cli` — the safety policy
+
+| Runs without asking | Asks first |
+|---------------------|-----------|
+| `--help`, `--version`, `doctor`, `--flow`, `--report`, reading `.env` and flows | `appclaw "goal"`, `--explore`, `--record`, `--tui` / `--playground` |
+
+The right-hand column spends model tokens and acts on the device. It is the same boundary Chapter 9 draws for CI, and a template for skills you write yourself.
+
+### Three places knowledge lives
+
+| Layer | File | Read by | When |
+|-------|------|---------|------|
+| Claude Code skill | `.claude/skills/<name>/SKILL.md` | Claude Code | Authoring time |
+| AppClaw app guide | `.appclaw/guides/<appId>.md` | AppClaw's agent | Goal runs, when the goal names the app |
+| Env bindings | `.appclaw/env/<name>.yaml` | Flow runner | Resolving `${variables.*}` and `${secrets.*}` |
+
+The repo's app guide (`.appclaw/guides/com.wdiodemoapp.md`) improves the agent's planning in goal mode and does nothing when you ask Claude Code for a flow. A skill changes how flows are written; it changes nothing at run time.
+
+### Writing your own
+
+The AppClaw skills know AppClaw, not the demo app. A short `.claude/skills/wdio-demo-app/SKILL.md` with the tab ids, field ids, demo credentials and success texts makes every later request correct first time. Rules: the description is a trigger, so say *when* to load it; facts, not prose; one subject per skill; say what to prefer (accessibility ids, never text XPath for tabs); restart Claude Code to pick it up. Reference: `workshop/08-appclaw-skills/examples/wdio-demo-app/SKILL.md`.
 
 ### Exercise
 
-- **Exercise 8** — Full narrative goal to running spec (`workshop/08-e2e-demo/exercises/exercise-8.md`)
+- **Exercise 8** — Generate, break and repair a flow with skills, then write your own (`workshop/08-appclaw-skills/exercises/exercise-8.md`)
 
 ---
 

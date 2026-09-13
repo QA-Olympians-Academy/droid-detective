@@ -1,0 +1,25 @@
+appId: com.wdiodemoapp
+name: Forms — text input echoes to the result label
+description: Types into the Forms screen text input and verifies the result label shows the typed text. The flow /generate-appclaw-flow should produce for Exercise 8, Part A.
+platform: android
+---
+# Accessibility ids (content-desc) on the WDIO demo app: the bottom tab is "Forms",
+# the input is "text-input", the live result label is "input-text-result".
+# Nothing here is secret, so no .appclaw/env/ binding is needed.
+setup:
+  - launchApp
+  - waitUntil: "Forms"
+
+steps:
+  - tap: "Forms"
+  - waitUntil: "text-input"
+  # Targeted typing: a bare `type:` writes into whatever has focus (see flows/login.yaml).
+  - type "hello" in the text-input field
+  - waitUntil: "input-text-result"
+
+assertions:
+  # Both the input and the result label now contain "hello", so this text assertion
+  # is deliberately weak; the waitUntil on input-text-result above is what shows the
+  # label rendered. Ask the skill for a stronger check if your app exposes one.
+  - assert: "hello"
+  - done: "hello"

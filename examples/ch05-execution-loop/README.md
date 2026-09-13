@@ -13,14 +13,21 @@ The Think → Act → Observe → Repeat loop, distilled from the production bot
 
 ## Run it (needs emulator + LLM)
 
+By default `llm.ts` talks to a local Ollama server at `http://localhost:11434`
+and uses `llama3.2:3b` — no API key or env vars required.
+
 ```bash
+# once
+ollama pull llama3.2:3b
+
 # terminal 1
 pnpm appium
 
-# terminal 2 — OpenRouter…
-export LLM_BASE_URL=https://openrouter.ai/api/v1 OPEN_ROUTER_API_KEY=sk-...
-# …or local Ollama:
-# export LLM_BASE_URL=http://localhost:11434/v1 LLM_API_KEY=ollama LLM_MODEL=qwen2.5
+# terminal 2 — local Ollama + llama3.2:3b (default, nothing to export)…
+# …or another Ollama model:
+# export LLM_MODEL=llama3.1
+# …or OpenRouter:
+# export LLM_BASE_URL=https://openrouter.ai/api/v1 OPEN_ROUTER_API_KEY=sk-... LLM_MODEL=openai/gpt-4o
 
 pnpm exec ts-node examples/ch05-execution-loop/run.ts
 # or with your own goal:

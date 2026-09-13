@@ -41,6 +41,7 @@ export const think = async (
     model: MODEL,
     messages: contents,
     tools,
+    temperature: 0, // pick the most likely tool call, not a creative one — small models invent ids otherwise
   });
   return response.choices[0].message;
 };

@@ -61,7 +61,7 @@ The setup is heavy (multi-GB downloads + an emulator). Do this **before** the se
 | 01:45 | Break | ☕ |
 | 01:55 | Self-healing | Hands-on |
 | 02:25 | Observability | Demo |
-| 02:40 | End-to-end demo | Live |
+| 02:40 | AppClaw skills demo | Live |
 | 02:55 | CI + wrap-up + Q&A | Talk |
 
 ---

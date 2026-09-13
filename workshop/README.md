@@ -41,7 +41,7 @@ Branches are generated with `bash workshop/build-branches.sh` (idempotent;
 | 6 | [06-self-healing/](06-self-healing/) | Self-Healing Selectors — failure categories, healing loop | 11:45 |
 | 7 | [07-observability/](07-observability/) | Agentic Observability — traces, confidence, failure issues | 12:15 |
 | — | *Lunch* | | 13:00 |
-| 8 | [08-e2e-demo/](08-e2e-demo/) | E2E Demo — full workflow, POM, gestures | 13:45 |
+| 8 | [08-appclaw-skills/](08-appclaw-skills/) | AppClaw Skills — Claude Code skills that write, run and debug flows | 13:45 |
 | 9 | [09-ci-github/](09-ci-github/) | CI with GitHub Actions — two workflows, AppClaw CI | 14:30 |
 | 10 | [10-future-outlook/](10-future-outlook/) | Future Outlook — multi-agent, RL, NL authoring | 15:00 |
 | 11 | [11-qa-games/](11-qa-games/) | Q&A Games — locator quiz, fix-the-test, bingo | 15:30 |
@@ -66,7 +66,7 @@ take-home.
 | 5b | Execution Loop | Run the Bot with SmokeTest.md |
 | 6 | Self-Healing | Break a selector, watch CI heal |
 | 7 | Observability | Annotate a reasoning trace |
-| 8 | E2E Demo | Inspect → Plan → Execute → Observe |
+| 8 | AppClaw Skills | Generate, break and repair a flow with skills; write your own |
 | 9a | CI | AppClaw flows in GitHub Actions |
 | 9b | CI | Full WebdriverIO CI loop with healing |
 
@@ -85,12 +85,13 @@ adb shell uiautomator dump /dev/stdout # dump live device hierarchy
 
 ## Skill commands
 
+Claude Code skills shipped in `.claude/skills/` — how to use them is [Chapter 8](08-appclaw-skills/README.md).
+
 ```
-/appium-locators apps/demo.apk   # crawl app, return ranked locator map
-/generate-appclaw-flow           # create AppClaw YAML from plain English
-/use-appclaw-cli                 # troubleshoot a failing flow or command
-/generate-page-object            # generate WebdriverIO page object
-/generate-wdio-spec              # generate WebdriverIO spec
+/generate-appclaw-flow           # create or fix an AppClaw YAML flow from plain English
+/use-appclaw-cli                 # run, configure or troubleshoot the AppClaw CLI
+/appium-locators apps/demo.apk   # crawl the live app, return a ranked locator map (needs Appium MCP)
+/review-changes                  # review a diff of the AppClaw source itself — not used in this repo
 ```
 
 ## LLM Cost Reference
