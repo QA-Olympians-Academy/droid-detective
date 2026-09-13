@@ -99,7 +99,7 @@ All on a real Android device or emulator. All code is yours to keep.
 | 11:45 | **Ch 6 — Self-Healing Selectors** |
 | 12:15 | **Ch 7 — Agentic Observability** |
 | 13:00 | *Lunch* |
-| 13:45 | **Ch 8 — E2E Demo** |
+| 13:45 | **Ch 8 — AppClaw Skills** |
 | 14:30 | **Ch 9 — CI with GitHub Actions** |
 | 15:00 | **Ch 10 — Future Outlook** |
 | 15:30 | **Ch 11 — Q&A Games** |
@@ -983,138 +983,154 @@ Open `workshop/07-observability/examples/reasoning-trace-example.md`.
 <!-- _class: title lead -->
 
 # Chapter 8
-## E2E Demo
+## AppClaw Skills
 
-*13:45 – 14:30 · Full workflow, POM, gestures*
-
----
-
-## The Full Five-Step Workflow
-
-```
-Step 1: GOAL
-  "Verify drag items can be placed into their drop zones and reset"
-
-Step 2: INSPECT
-  mcp-appium → dump live DOM → map selectors on Drag screen
-
-Step 3: PLAN
-  Agent: navigate → assert screen → drag-l1 → drop-l1 → verify → reset
-
-Step 4: EXECUTE
-  WebdriverIO spec with DragPage extending BasePage
-
-Step 5: OBSERVE
-  Reasoning trace annotated — HIGH confidence on all drag selectors ✅
-```
+*13:45 – 14:30 · Claude Code skills that write, run and debug flows*
 
 ---
 
-## The Foundation: BasePage
+## Why Skills
 
-```typescript
-export default class BasePage {
-    protected async swipe(
-        startX: number, startY: number,
-        endX: number, endY: number,
-        duration = 500
-    ): Promise<void> {
-        await browser
-            .action('pointer', { parameters: { pointerType: 'touch' } })
-            .move({ x: startX, y: startY })
-            .down().pause(100)
-            .move({ duration, x: endX, y: endY })
-            .up().perform()
-    }
+Chapter 1: knowledge moves from people into **skills and prompts**.
 
-    async waitForElement(selector: string, timeout = 10000) {
-        const el = await $(selector)
-        await el.waitForDisplayed({ timeout })
-        return el
-    }
-}
+- Chapter 5 was the **run-time** half — AppClaw reads the screen, the flow carries the steps
+- This chapter is the **authoring** half — a `SKILL.md` tells Claude Code *how this team does a job*
+
+```
+Without the skill:  "write me a login flow"  →  guessed schema, an hour of fixing
+With the skill:     "write me a login flow"  →  parses, right step syntax, secrets in the right place
+```
+
+Skills run **inside Claude Code**. The flow they write runs with **zero** LLM calls.
+
+---
+
+## Anatomy of a Skill
+
+```markdown
+---
+name: generate-appclaw-flow        # → the slash command
+description: >                     # → the trigger
+  Generate YAML flow files for AppClaw ... Trigger when the user
+  wants to create, edit, or fix a YAML flow file for AppClaw.
+---
+
+# AppClaw Flow Generator
+(workflow · schema · rules · examples Claude follows)
+```
+
+Two ways in:
+
+```
+/generate-appclaw-flow a flow for the Forms text input     ← explicit
+Write me an AppClaw flow for the Forms text input          ← matched on description
 ```
 
 ---
 
-## The Getter Pattern — Why It Matters
+## The Skills in This Project
 
-```typescript
-// ❌ WRONG — fetched once, goes stale after navigation
-const btn = await $('~button-LOGIN')
-await page.navigateAway()
-await btn.click()   // StaleElementReferenceException
+| Skill | From | Use it when |
+|-------|------|-------------|
+| `/generate-appclaw-flow` | AppClaw | New flow, or a step will not parse |
+| `/use-appclaw-cli` | AppClaw | A command or flow fails · `.env` / env-file changes |
+| `/appium-locators <apk>` | this repo | You need real accessibility ids first |
+| `/review-changes` | AppClaw | Contributing to AppClaw itself only |
 
-// ✅ RIGHT — getter re-queries the DOM on each access
-get submitButton() { return $('~button-LOGIN') }
-
-await mainPage.submitButton.click()   // fresh query every time
+```
+.agents/skills/<name>/SKILL.md   ← npx skills add AppiumTestDistribution/appclaw
+.claude/skills/<name> → symlink  ← what Claude Code reads
+skills-lock.json                 ← same skill text for the whole room
 ```
 
-Every element in a page object is a getter. Never a stored reference.
+Start Claude Code **in the project root** — or the skills are not there.
 
 ---
 
-## Gesture Testing — Drag & Drop
+## `/generate-appclaw-flow` — What to Expect
 
-```typescript
-async dragToDropZone(sourceSelector: string, dropSelector: string) {
-    const src = await $(sourceSelector)
-    const tgt = await $(dropSelector)
-    const srcLoc = await src.getLocation()
-    const tgtLoc = await tgt.getLocation()
-    const srcSize = await src.getSize()
-    const tgtSize = await tgt.getSize()
-
-    await browser
-        .action('pointer', { parameters: { pointerType: 'touch' } })
-        .move({ x: Math.round(srcLoc.x + srcSize.width / 2),
-                y: Math.round(srcLoc.y + srcSize.height / 2) })
-        .down().pause(600)           // long press triggers drag
-        .move({ duration: 1000,
-                x: Math.round(tgtLoc.x + tgtSize.width / 2),
-                y: Math.round(tgtLoc.y + tgtSize.height / 2) })
-        .up().perform()
-}
 ```
+1. Understand   appId · journey · what "done" looks like
+2. Check        flows/ for overlap · .appclaw/env/ for variables and secrets
+3. Propose      path · flat vs phased · steps · env bindings
+                ── waits for your approval ──
+4. Generate     writes the YAML
+5. Validate     parses it · offers to run on the connected device
+```
+
+**Step 3 is the point.** A flow drives a real device with no model in the loop — nobody writes one you have not read.
 
 ---
 
-## Locator Stability — Priority Order
+## A Good Request Supplies What the Skill Cannot Know
 
-| Priority | Strategy | Survives redesign? |
-|----------|----------|--------------------|
-| ✅ 1st | `~accessibilityId` | Yes — only breaks if dev changes `contentDescription` |
-| ✅ 2nd | `resource-id` | Yes — only breaks if resource ID renamed |
-| ⚠️ 3rd | XPath by text | No — any copy change breaks it |
-| ❌ Last | Structural XPath | No — any layout change breaks it |
+```
+/generate-appclaw-flow
 
-**The agent always prefers accessibility IDs.** If none exist — it asks you to add them.
+App: com.wdiodemoapp on emulator-5554.
+Journey: open the Forms tab, type "hello" into the text input,
+         verify the result label shows "hello".
+Known ids: tabs Home | Webview | Login | Forms | Swipe | Drag;
+           input text-input; result label input-text-result.
+Phased format. Write to flows/forms-text.yaml.
+```
+
+Then run it twice:
+
+```bash
+pnpm run claw:flow flows/forms-text.yaml            # zero LLM calls
+appclaw --flow flows/forms-text.yaml --strict       # fail fast instead of LLM fallback
+```
+
+`--strict` names the step that would have gone to the slow local model.
+
+---
+
+## `/use-appclaw-cli` — The Operator's Safety Line
+
+| Runs without asking | Asks you first |
+|---------------------|----------------|
+| `--help` · `--version` · `doctor` | `appclaw "goal"` |
+| `--flow …` (deterministic) | `--explore …` |
+| `--report` (read-only) | `--record …` |
+| reading `.env` · `.appclaw/env/` · flows | `--tui` / `--playground` |
+
+Right column: spends tokens, acts on the device. **Same boundary Chapter 9 draws for CI.**
+
+---
+
+## Three Places Knowledge Lives
+
+| Layer | File | Read by | When |
+|-------|------|---------|------|
+| Claude Code skill | `.claude/skills/<name>/SKILL.md` | Claude Code | Authoring |
+| AppClaw app guide | `.appclaw/guides/<appId>.md` | AppClaw's agent | Goal runs |
+| Env bindings | `.appclaw/env/<name>.yaml` | Flow runner | `${secrets.*}` |
+
+The AppClaw skills know AppClaw. **They do not know the demo app.**
+
+```
+.claude/skills/wdio-demo-app/SKILL.md
+  - tabs: Home | Webview | Login | Forms | Swipe | Drag
+  - Login: input-email · input-password · button-LOGIN · alert contains "logged in"
+  - prefer accessibility ids; never text XPath for tabs
+```
+
+Description = trigger · facts, not prose · one subject per skill · new session to load it
 
 ---
 
 <!-- _class: exercise -->
 
-## Exercise 8 — Inspect → Plan → Execute → Observe
+## Exercise 8 — Generate → Break → Repair → Your Own Skill
 
-**Part 1 — Inspect**
+**Part A — Generate.** `/generate-appclaw-flow` for the Forms text input. **Stop at the plan.** Approve, then run with `pnpm run claw:flow` and again with `--strict`.
 
-```
-> Using mcp-appium, navigate to the Drag screen
-  and list every element with its accessibility ID.
-```
+**Part B — Break.** Misspell a label. Paste the failing output into `/use-appclaw-cli`. Did it read the flow and `.env` before answering? Did it stay out of agent mode?
 
-**Part 2 — Plan**
+**Part C — Your skill.** Copy `examples/ch08-appclaw-skills/wdio-demo-app` to `.claude/skills/`, restart, regenerate **without** giving ids. Compare.
 
-Write a natural-language test plan: navigate → assert → drag → verify → reset.
-
-**Part 3 — Execute**
-
-Implement the plan as a WebdriverIO spec using DragPage. Run it: `pnpm test`
-
-**Part 4 — Observe**
-
-Annotate the reasoning trace with confidence scores. Were any LOW?
+**Part D — Inspect first (bonus).** `/appium-locators apps/demo.apk` on the Swipe screen → feed the ids to the flow generator.
 
 ---
 
@@ -1444,7 +1460,7 @@ Environment setup · Prompt engineering · Think→Act→Observe · AppClaw YAML
 Three-category failure model · Self-healing CI · Reasoning traces · Confidence scoring · AI failure analysis
 
 **Ch 8–9 · Production Patterns**
-E2E workflow · POM with getter pattern · Gesture testing · Two-workflow CI · AppClaw in CI (zero LLM cost)
+Claude Code skills for AppClaw · Propose-before-write · Project skills for app knowledge · Two-workflow CI · AppClaw in CI (zero LLM cost)
 
 **Ch 10–11 · Looking Ahead**
 Future capabilities · Multi-agent architectures · Locked-in learning with games

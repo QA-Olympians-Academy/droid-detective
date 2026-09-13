@@ -4,9 +4,8 @@ Facilitator notes for the 90-minute cut ([docs/WORKSHOP-90MIN.md](../docs/WORKSH
 is the agenda; [docs/PLAYBOOK-3H.md](../docs/PLAYBOOK-3H.md) still applies for
 student prerequisites, pre-flight checklist, and the troubleshooting table —
 the toolchain is identical). For every block: exactly what to run, what to
-point at, and how to reset. Like [instructor.md](instructor.md) and
-[instructor-3h.md](instructor-3h.md), this file lives only on `main` — the
-branch build strips it from participant branches.
+point at, and how to reset. See also [instructor.md](instructor.md) and
+[instructor-3h.md](instructor-3h.md).
 
 **Fully local: Ollama + llama3.1, no cloud LLM key. No break, one checkpoint
 gates everything, two hands-on blocks carry the session.**
@@ -41,9 +40,6 @@ export WDIO_EXCLUDE=specs/example.spec.ts
 pnpm test                                # ch6 baseline; afterTest snapshots the DOM
 node .github/scripts/heal-and-retry.js   # 01:05 dry-run against a staged break
 ```
-
-The `start/chNN` branches are **not used** in this format — nobody implements
-stubs. Keep them published: they're the take-home path in the wrap-up.
 
 **Send the pre-work reminder 48h out.** With only 15 minutes of setup time,
 anyone without an installed toolchain, a booted emulator, and a pulled
@@ -147,7 +143,7 @@ One sentence each, one slide total:
 - **CI:** AppClaw YAML flows (zero-LLM) as the first gate, then WDIO specs
   with healing inside the emulator job — `.github/workflows/android-tests.yml`.
 
-For self-study: the `start/chNN` branches ([examples/README.md](README.md))
+For self-study: the complete examples ([examples/README.md](README.md))
 and the full-day agenda in [workshop/README.md](../workshop/README.md).
 Take 1–2 questions. Close.
 

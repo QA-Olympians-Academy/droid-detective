@@ -4,8 +4,7 @@ Facilitator notes for the full-day workshop (AutomationSTAR schedule in
 [workshop/README.md](../workshop/README.md)). Running a shorter cut instead?
 Use [instructor-3h.md](instructor-3h.md) or [instructor-90m.md](instructor-90m.md).
 For every chapter: what to have
-ready, exactly what to run, what to point at, and how to reset. This file
-lives only on `main` — the branch build strips it from participant branches.
+ready, exactly what to run, what to point at, and how to reset.
 
 ---
 
@@ -22,14 +21,13 @@ emulator -avd <your-avd> &
 adb devices                             # expect: emulator-5554   device
 # local model for ch6/ch9 (and $0-cost demos):
 ollama pull llama3.1
-# LLM for ch5 live runs — default is local Ollama + llama3.1 (nothing to export, ~10 s/step);
-# for a snappier demo (2-4 s/step) point it at OpenRouter instead:
+# LLM for ch5 live runs — default is local Ollama + llama3.1 (nothing to export; ≈3 s/step once
+# loaded; pre-load it with `curl -s localhost:11434/api/generate -d '{"model":"llama3.1"}'`).
+# llama3.2:3b is faster but never finishes the login goal. For a hosted model instead:
 # export LLM_BASE_URL=https://openrouter.ai/api/v1 OPEN_ROUTER_API_KEY=sk-... LLM_MODEL=openai/gpt-4o
 # AppClaw CLI is a global install — verify it, then smoke the flow:
 appclaw --version || npm i -g @appclaw/cli
 pnpm claw:flow flows/login.yaml
-# rebuild + publish participant branches if examples changed:
-PUSH=1 bash workshop/build-branches.sh
 ```
 
 Smoke-test the three offline demos — they must work with zero infrastructure:
@@ -40,11 +38,9 @@ node examples/ch06-self-healing/self-healer.js
 pnpm exec ts-node examples/ch07-observability/run.ts
 ```
 
-**Branch choreography.** Participants clone the repo and check out the branch
-for wherever they join: `start/ch04` (start of hands-on) … `start/ch09`. Each
-branch has earlier chapters complete and the current chapter onward stubbed
-with `TODO(chN)` markers. Answers on demand:
-`git checkout main -- examples/<chapter>`.
+**Everyone on `main`.** There are no participant branches: every example is the
+complete reference implementation. Participants run it, read it and change it live;
+`git checkout -- examples/<chapter>` undoes an experiment.
 
 ---
 
@@ -85,9 +81,9 @@ pnpm exec ts-node examples/ch04-agent-mind/run.ts
 
 Show the locator map first (ranked selectors per element), then the plan.
 Point at the `~button-LOGIN` vs `~LOGIN-button` gotcha — it's annotated in the
-sample XML the demo reads. Participants on `start/ch04` implement
-`parseHierarchy` → `rankLocators` → `planGoal`; the runner prints their result
-as soon as the TODOs stop throwing. Exercises: `workshop/04-agent-mind/exercises/`.
+sample XML the demo reads. Walk `parseHierarchy` → `rankLocators` → `planGoal`
+in `examples/ch04-agent-mind/`; the runner prints each stage's result.
+Exercises: `workshop/04-agent-mind/exercises/`.
 
 ## Ch 5 — 11:00 · The Execution Loop *(hands-on, 45 min · emulator + LLM)*
 
@@ -140,21 +136,29 @@ renderer is given. Compare their output with
 
 *(Lunch 13:00)*
 
-## Ch 8 — 13:45 · End-to-End Demo *(hands-on, 45 min · emulator)*
+## Ch 8 — 13:45 · AppClaw Skills *(hands-on, 45 min · emulator + Claude Code)*
 
-The full Inspect → Plan → Execute arc in one session:
+Claude Code authors the flow; the flow runs with no model in the loop:
 
 ```bash
-# 1. INSPECT — locator discovery with the Claude Code skill:
-/appium-locators apps/demo.apk
-# 2. PLAN — paste the locator map + goal into Claude, get numbered steps
-# 3. EXECUTE — the hardened artifact:
-pnpm test -- --spec examples/ch08-e2e-demo/login.spec.ts
+appclaw doctor                        # everyone green before touching a skill
+# 1. GENERATE — in Claude Code, started from the project root:
+/generate-appclaw-flow  <the Part A request from workshop/08-appclaw-skills/exercises/exercise-8.md>
+#    stop at the plan; room says yes/no; only then is the file written
+# 2. RUN — twice, the second time strict:
+pnpm run claw:flow flows/forms-text.yaml
+appclaw --flow flows/forms-text.yaml --strict
+# 3. BREAK + DIAGNOSE — misspell a label, paste the failure into:
+/use-appclaw-cli  <failing output>    # must diagnose without offering a goal run
+# 4. YOUR SKILL — participants install the project skill and regenerate without ids:
+cp -R examples/ch08-appclaw-skills/wdio-demo-app .claude/skills/    # then restart Claude Code
 ```
 
-Participants fill in `login.page.ts` locators (from their own step-1 output)
-and the four spec bodies. Emphasise what "production-quality" means — the
-bullet list in `examples/ch08-e2e-demo/README.md`.
+Reference answers: `examples/ch08-appclaw-skills/` (flow verified 8/8 under `--strict`).
+Run the weakest request from the room first: the guessed label fails under `--strict`, and
+the contrast is the lesson. If setup fails at the first `waitUntil` right after `launchApp`,
+open `.appclaw/runs/<runId>/steps/step-001.png`; the Android launcher means a cold-start
+race, so re-run.
 
 ## Ch 9 — 14:30 · CI with GitHub Actions *(hands-on, 30 min · Ollama)*
 
@@ -191,7 +195,6 @@ each `workshop/NN-*/quiz.json`.
 ```bash
 git checkout droid/pageobjects examples/          # undo live-demo damage
 rm -rf examples/ch06-self-healing/.healed examples/ch07-observability/trace-report.md
-git checkout main && bash workshop/build-branches.sh   # rebuild checkpoints
 ```
 
 ## Known gotchas
@@ -203,4 +206,4 @@ git checkout main && bash workshop/build-branches.sh   # rebuild checkpoints
 - Root `.gitignore` ignores `*.log` — the ch6 fixture is `appium-failure.log`
   (explicitly un-ignored); don't rename it back to `appium.log`.
 - Ollama on CPU is slow: for ch6 `--llm` and ch9, warm the model
-  (`ollama run llama3.1 ''`) before the demo.
+  (`curl -s localhost:11434/api/generate -d '{"model":"llama3.1"}'` — `ollama run llama3.1 ''` waits for input) before the demo.

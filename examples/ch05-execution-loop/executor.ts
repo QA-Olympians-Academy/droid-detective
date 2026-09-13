@@ -20,44 +20,105 @@ import { type ElementAction, type TestResult } from './tools';
 
 const ELEMENT_TIMEOUT_MS = 2000; // a wrong selector must fail fast — the model retries anyway
 const MAX_WAIT_SECONDS = 3;
-const SETTLE_MS = 1500; // dialogs and animations after an action (login alert ≈ 1 s)
+const SETTLE_MS = 500; // let an action land before observe() waits for the screen to stop changing
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 // ── Observe: page-source compression ─────────────────────────────────────────
 // Appium's uiautomator XML is 30-40 KB per screen of this app (≈10k tokens),
 // and ~90% of it is boilerplate (`focusable="false" drawing-order="7" …`).
-// A local 8B model stops calling tools at that size, and every Think step
-// pays to read it. Keep only what the model needs to choose a selector:
-// one line per element, identifying + interactive attributes. ≈3% of the size.
+// A local model stops calling tools at that size, and every Think step pays
+// to read it. Keep only what the model needs to choose a selector: one line
+// per element, identifying + interactive attributes. ≈3% of the size.
 
-const KEEP_ATTRS = ['text', 'content-desc', 'resource-id', 'hint', 'clickable', 'scrollable', 'password', 'checked', 'focused'];
-const IDENTIFYING = ['text', 'content-desc', 'resource-id', 'hint', 'clickable', 'scrollable'];
+type UiNode = { tag: string; attrs: Record<string, string>; children: UiNode[]; consumed?: boolean };
+
+const KEEP_ATTRS = ['text', 'content-desc', 'resource-id', 'hint', 'clickable', 'scrollable', 'password', 'checked', 'selected'];
+const IDENTIFYING = ['text', 'value', 'content-desc', 'resource-id', 'hint', 'clickable', 'scrollable'];
+const GLYPH = /^&#\d+;$/; // icon-font characters, e.g. &#983536; — noise to a text model
+
+const parseTree = (xml: string): UiNode[] => {
+  const root: UiNode = { tag: 'root', attrs: {}, children: [] };
+  const stack = [root];
+  for (const [token, tag, body, selfClosing] of xml.matchAll(/<\/[^>]+>|<([A-Za-z][\w.$]*)\b([^>]*?)(\/?)>/g)) {
+    if (token.startsWith('</')) {
+      if (stack.length > 1) stack.pop();
+      continue;
+    }
+    const attrs = Object.fromEntries([...body.matchAll(/([\w-]+)="([^"]*)"/g)].map((m) => [m[1], m[2]]));
+    const node: UiNode = { tag, attrs, children: [] };
+    stack[stack.length - 1].children.push(node);
+    if (!selfClosing) stack.push(node);
+  }
+  return root.children;
+};
+
+// The visible text of a clickable container lives in child TextViews ("LOGIN").
+// Pull it up as `label` so the model can tell `button-LOGIN` from
+// `button-login-container`, and drop those children — they carry nothing else.
+const takeLabel = (node: UiNode): string => {
+  const labels: string[] = [];
+  const walk = (n: UiNode) => {
+    for (const child of n.children) {
+      const { text, 'content-desc': desc, clickable } = child.attrs;
+      if (text && !GLYPH.test(text) && !desc && clickable !== 'true') {
+        labels.push(text);
+        child.consumed = true;
+      }
+      walk(child);
+    }
+  };
+  walk(node);
+  return labels.slice(0, 2).join(' ').slice(0, 80);
+};
 
 export const compressPageSource = (xml: string): string => {
   const lines: string[] = [];
-  for (const [, tag, body] of xml.matchAll(/<([A-Za-z][\w.$]*)\b([^>]*?)\/?>/g)) {
-    if (tag === 'hierarchy') continue;
-    const attrs = Object.fromEntries([...body.matchAll(/([\w-]+)="([^"]*)"/g)].map((m) => [m[1], m[2]]));
+  const visit = (node: UiNode) => {
+    const { tag, attrs } = node;
     const kept: Record<string, string> = {};
     for (const key of KEEP_ATTRS) {
       const value = attrs[key];
-      if (value && value !== 'false' && !/^&#\d+;$/.test(value)) kept[key] = value; // skip empty, false, icon glyphs
+      if (value && value !== 'false' && !GLYPH.test(value)) kept[key] = value; // skip empty, false, glyphs
     }
-    if (kept.hint && kept.text === kept.hint) delete kept.text; // placeholder shown as text, not a value
+    if (kept.hint || tag.endsWith('EditText')) {
+      // Inputs: show the current VALUE, empty or not — an empty password field
+      // is exactly what the model needs to notice before pressing LOGIN.
+      kept.value = kept.text && kept.text !== kept.hint ? kept.text : '';
+      delete kept.text;
+    }
     if (kept['content-desc']) delete kept['resource-id']; // one id per element — the preferred one
     if (attrs.enabled === 'false') kept.enabled = 'false';
-    if (!IDENTIFYING.some((key) => key in kept)) continue; // pure layout container — nothing to act on
-    const shortTag = tag.slice(tag.lastIndexOf('.') + 1);
-    const attrList = Object.entries(kept).map(([key, value]) => `${key}="${value}"`).join(' ');
-    lines.push(`<${shortTag} ${attrList}/>`);
-  }
+    if (kept.clickable && !kept.text) {
+      const label = takeLabel(node);
+      if (label) kept.label = label;
+    }
+    if (tag !== 'hierarchy' && !node.consumed && IDENTIFYING.some((key) => key in kept)) {
+      const shortTag = tag.slice(tag.lastIndexOf('.') + 1);
+      const attrList = Object.entries(kept).map(([key, value]) => `${key}="${value}"`).join(' ');
+      lines.push(`<${shortTag} ${attrList}/>`);
+    }
+    node.children.forEach(visit);
+  };
+  parseTree(xml).forEach(visit);
   return lines.join('\n');
 };
 
-/** The observation the model reasons about: the current screen, compressed. */
-export const observe = async (driver: WebdriverIO.Browser): Promise<string> =>
-  compressPageSource(await driver.getPageSource());
+/**
+ * The observation the model reasons about: the current screen, compressed —
+ * once it has stopped changing. A dump taken mid-animation (a dialog sliding
+ * in) shows a half-empty screen, and the model would reason about that.
+ */
+export const observe = async (driver: WebdriverIO.Browser): Promise<string> => {
+  let previous = '';
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const current = compressPageSource(await driver.getPageSource());
+    if (current && current === previous) return current;
+    previous = current;
+    await sleep(500);
+  }
+  return previous;
+};
 
 // ── Selector resolution ───────────────────────────────────────────────────────
 // The LLM answers with a plain identifier string; map it onto a WDIO selector.

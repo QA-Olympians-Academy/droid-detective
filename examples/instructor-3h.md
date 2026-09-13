@@ -4,9 +4,8 @@ Facilitator notes for the 3-hour cut ([docs/WORKSHOP-3H.md](../docs/WORKSHOP-3H.
 is the agenda; [docs/PLAYBOOK-3H.md](../docs/PLAYBOOK-3H.md) has the student
 prerequisites, pre-flight checklist, and troubleshooting table — this file does
 not repeat them). For every block: exactly what to run, what to point at, and
-how to reset. Like [instructor.md](instructor.md) (the full-day run-book) and
-[instructor-90m.md](instructor-90m.md) (the 90-minute cut), this file lives
-only on `main` — the branch build strips it from participant branches.
+how to reset. See also [instructor.md](instructor.md) (the full-day run-book) and
+[instructor-90m.md](instructor-90m.md) (the 90-minute cut).
 
 **The 3-hour format is fully local: Ollama + llama3.1, no cloud LLM key.**
 
@@ -38,10 +37,8 @@ node .github/scripts/heal-and-retry.js                   # 01:55 dry-run (see be
 pnpm exec ts-node examples/ch07-observability/run.ts     # 02:25 demo (offline)
 ```
 
-Unlike the full day, the `start/chNN` branches are **not required** — the two
-hands-on blocks (ch5, ch6) run commands against the repo as-is rather than
-implementing stubs. Keep the branches published anyway: they're the take-home
-exercise path you point at in the wrap-up.
+Everything runs from `main`: the two hands-on blocks (ch5, ch6) run commands
+against the repo as-is, and every example is complete.
 
 ---
 
@@ -153,27 +150,31 @@ step** — observability finds the flake before it becomes a red build. Compare
 with `workshop/07-observability/examples/reasoning-trace-example.md`.
 This block is the second thing to drop if you're behind (after the playground).
 
-## 02:40 — End-to-end demo *(live demo, 15 min · Ch8)*
+## 02:40 — AppClaw skills demo *(live demo, 15 min · Ch8)*
 
 Speaker-driven — no solo exercise in this format:
 
 ```bash
-# 1. INSPECT — locator discovery with the Claude Code skill:
-/appium-locators apps/demo.apk
-# 2. PLAN — paste the locator map + goal into Claude, get numbered steps
-# 3. EXECUTE — the hardened artifact:
-pnpm test -- --spec examples/ch08-e2e-demo/login.spec.ts
+# 1. GENERATE — in Claude Code from the project root, with the Part A request from
+#    workshop/08-appclaw-skills/exercises/exercise-8.md:
+/generate-appclaw-flow  <request>            # stop at the plan, room approves
+# 2. RUN — twice, the second time strict:
+pnpm run claw:flow flows/forms-text.yaml
+appclaw --flow flows/forms-text.yaml --strict
+# 3. DIAGNOSE — misspell a label, paste the failure into /use-appclaw-cli
 ```
 
-Hit the locator priority order (Accessibility ID → Resource ID → Text →
-structural XPath) and the getter pattern (never cache element references).
+Hit what the skill cannot know (accessibility ids, success text: run a weak request
+first and let `--strict` fail on the guessed step) and the operator skill's safety
+line (`--flow` runs freely, any goal run asks first). Reference answers:
+`examples/ch08-appclaw-skills/`.
 
 ## 02:55 — CI, wrap-up & Q&A *(5 min · Ch9–11)*
 
 One slide: AppClaw YAML flows (zero-LLM) as the first CI gate, then WDIO specs
 with healing inside the emulator job — point at
-`.github/workflows/android-tests.yml`. For self-study: the `start/chNN`
-branches ([examples/README.md](README.md)) and the ch9 helpers
+`.github/workflows/android-tests.yml`. For self-study: the complete examples
+([examples/README.md](README.md)) and the ch9 helpers
 (`node examples/ch09-agent-ci/review-locators.js`). Take 2–3 questions. Close.
 
 **If you're ahead:** one game from `workshop/11-qa-games/games/locator-quiz.md`

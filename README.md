@@ -12,6 +12,7 @@ droid-detective provides two complementary things:
 
 1. **A conventional test suite** — Page Object Model tests for an Android app, written in TypeScript and run via WebdriverIO + Appium.
 2. **An agentic locator skill** — A Claude Code slash command (`/appium-locators`) that uses the Appium MCP server to inspect a live Android app and discover UI element locators automatically.
+3. **AppClaw skills** — Claude Code skills from the AppClaw project (`/generate-appclaw-flow`, `/use-appclaw-cli`) that write and troubleshoot zero-LLM YAML flows. How to use them: [workshop chapter 8](workshop/08-appclaw-skills/README.md).
 
 The goal is to demonstrate how an AI agent can reduce the friction of writing mobile tests by handling the tedious part: finding the right selectors.
 
@@ -81,11 +82,16 @@ WebdriverIO starts Appium automatically as a service, installs the APK, and runs
 
 ```
 droid-detective/
-├── .claude/
-│   └── appium-locators/
-│       └── SKILL.md              # /appium-locators Claude Code skill
+├── .agents/skills/               # AppClaw's Claude Code skills, installed by `npx skills add` (chapter 8)
+├── .claude/skills/
+│   ├── appium-locators/SKILL.md  # /appium-locators — this repo's own skill
+│   ├── generate-appclaw-flow     # → symlinks into .agents/skills/
+│   ├── use-appclaw-cli
+│   └── review-changes
+├── .appclaw/guides/              # app guide AppClaw's agent reads in goal mode
 ├── apps/
 │   └── demo.apk                  # Android app under test (gitignored)
+├── flows/                        # AppClaw YAML flows (zero LLM; run in CI by appclaw.yml)
 └── droid/
     ├── wdio.conf.ts               # WebdriverIO + Appium configuration
     ├── globals.d.ts               # WebdriverIO global type declarations

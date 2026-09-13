@@ -12,20 +12,12 @@ Each chapter is self-contained. Read the `README.md` for the theory, open `examp
 
 You can start any chapter independently — prerequisites are listed at the top of each README.
 
-### Hands-on branches
+### Hands-on code
 
 Chapters 4–9 also have runnable exercise code in the top-level [examples/](../examples/README.md)
-directory. On `main` every example is complete; the `start/ch04` … `start/ch09`
-branches are cumulative checkpoints where the current chapter onward is stubbed
-with `TODO(chN)` skeletons to implement live:
-
-```bash
-git checkout start/ch06        # ch4–5 complete, implement self-healing onwards
-git checkout main -- examples/ch06-self-healing   # restore the answers
-```
-
-Branches are generated with `bash workshop/build-branches.sh` (idempotent;
-`PUSH=1` publishes them).
+directory. Everything runs from `main`, where every example is the complete reference
+implementation: run it, read it, change it live. Undo an experiment with
+`git checkout -- examples/<chapter>`.
 
 ---
 

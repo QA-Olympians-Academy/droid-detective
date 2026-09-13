@@ -46,6 +46,7 @@ Come prepared with at least one question in one of these categories:
 | [Locator Quiz](games/locator-quiz.md) | Teams of 2–4 | 8 min | Given a DOM excerpt, select the best selector |
 | [Fix the Broken Test](games/fix-the-test.md) | Individual | 10 min | Given a failing test + DOM, write the healing patch |
 | [Selector Bingo](games/selector-bingo.md) | Full group | 8 min | Bingo card of real selector anti-patterns |
+| [Kahoot Recap](games/kahoot-recap.md) | Full group, phones | 6–12 min | 2 multiple-choice questions per chapter; import `games/kahoot-recap.xlsx` into Kahoot |
 
 ---
 

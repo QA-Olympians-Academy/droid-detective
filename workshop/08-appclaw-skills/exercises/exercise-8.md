@@ -40,7 +40,7 @@ appclaw --flow flows/forms-text.yaml --strict         # should still pass
 
 If strict mode fails where the normal run passed, one step was silently parsed by the LLM. Note which one. Ask the skill to rewrite that step in structured syntax (`tap:`, `type:`, `assert:`).
 
-Compare with [examples/forms-text.yaml](../examples/forms-text.yaml).
+Compare with [examples/ch08-appclaw-skills/forms-text.yaml](../../../examples/ch08-appclaw-skills/forms-text.yaml).
 
 > The ids `text-input` and `input-text-result` come from the demo app's source. If a step cannot find them on your build of the app, run `/appium-locators apps/demo.apk`, navigate to Forms, and use what it reports.
 
@@ -78,7 +78,7 @@ Part A only worked because you typed the accessibility ids into the request. Put
 
 ```bash
 mkdir -p .claude/skills/wdio-demo-app
-cp workshop/08-appclaw-skills/examples/wdio-demo-app/SKILL.md .claude/skills/wdio-demo-app/SKILL.md
+cp examples/ch08-appclaw-skills/wdio-demo-app/SKILL.md .claude/skills/wdio-demo-app/SKILL.md
 ```
 
 Open it and add a Swipe section the example does not have: the screen container id is `Swipe-screen` and each carousel card has the id `card`.

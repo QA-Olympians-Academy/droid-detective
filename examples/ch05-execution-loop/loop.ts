@@ -19,7 +19,7 @@ import { LoopTools, type TestResult } from './tools';
 
 const MAX_STEPS = 15; // budget: a lost agent must not loop forever
 const MAX_PROSE_REPLIES = 2; // a model that keeps talking instead of acting is done
-const MAX_REPEATS = 3; // the same failing call this many times in a row = stuck
+const MAX_REPEATS = 3; // the same ineffective action this many times in a row = stuck
 
 export const runAgentLoop = async (
   goal: string,
@@ -34,8 +34,9 @@ export const runAgentLoop = async (
   let pageSourceIndex = contents.length - 1; // where the latest observation lives
   const actionLog: string[] = [];
   let proseReplies = 0;
-  let lastFailedStep = '';
+  let lastStepKey = '';
   let repeats = 0;
+  const useless = new Set<string>(); // elements whose action changed nothing — remembered for the whole run
 
   for (let step = 1; step <= MAX_STEPS; step++) {
     // ── Think ──
@@ -81,25 +82,36 @@ export const runAgentLoop = async (
     }
 
     // ── Repeat — or stop when stuck ──
-    // A model that re-sends the exact same failing call is not reading the
-    // feedback. Nudge once, then end the run: burning the budget helps nobody.
-    const failedStep = outcomes.some((o) => o.startsWith('Failed')) ? JSON.stringify(toolCalls) : '';
-    if (failedStep && failedStep === lastFailedStep) {
+    // Same action as last step and the screen did not change (or the action
+    // failed again): the model is not reading the feedback. Nudge once, naming
+    // the useless element, remember it for the rest of the run, and end the
+    // run if it happens again — burning the budget helps nobody.
+    const calls = toolCalls.map(({ id: _id, ...call }) => call); // ids differ every step — compare the content
+    const stepKey = JSON.stringify(calls) + contents[pageSourceIndex].content;
+    if (stepKey === lastStepKey) {
       repeats += 1;
+      const targets = calls
+        .map((call) => JSON.parse(call.function.arguments || '{}').element_identifier)
+        .filter(Boolean) as string[];
+      targets.forEach((t) => useless.add(t));
       if (repeats >= MAX_REPEATS - 1) {
-        console.log(`\n[ stuck ] the same failing action ${MAX_REPEATS} times in a row`);
-        return { success: false, message: `Agent stuck: repeated a failing action ${MAX_REPEATS} times` };
+        console.log(`\n[ stuck ] the same action with no effect ${MAX_REPEATS} times in a row`);
+        return { success: false, message: `Agent stuck: repeated an ineffective action ${MAX_REPEATS} times` };
       }
+      console.log(`  ↻ no effect — nudging the model away from ${targets.join(', ') || 'that action'}`);
       contents.push({
         role: 'user',
         content:
-          'You repeated the same failing action. That element is NOT on this screen. ' +
+          `Your action on ${targets.join(', ') || 'that element'} did nothing — the screen is unchanged. Do NOT use it again. ` +
           'Choose a DIFFERENT element from the page source above, copying its content-desc verbatim.',
       });
     } else {
       repeats = 0;
     }
-    lastFailedStep = failedStep;
+    lastStepKey = stepKey;
+    if (useless.size > 0) {
+      contents[pageSourceIndex].content += `\nAlready tried with NO effect — do not use again: ${[...useless].join(', ')}`;
+    }
   }
 
   console.log(`\n[ budget ] ${MAX_STEPS} steps used without a verdict`);

@@ -151,7 +151,7 @@ Format: phased (setup / steps / assertions). File: flows/forms-text.yaml.
 
 Things the skill does well without being asked: `launchApp` in `setup`, a `waitUntil` before the first tap, single quotes around interpolated values, no hardcoded secrets. Things it cannot know: your accessibility ids and your success text. Supply those, or it will guess labels from the screen name and you find out at run time.
 
-What the exchange looks like: [examples/skill-session.md](examples/skill-session.md). What it should produce: [examples/forms-text.yaml](examples/forms-text.yaml).
+What the exchange looks like: [examples/skill-session.md](examples/skill-session.md). What it should produce: [examples/ch08-appclaw-skills/forms-text.yaml](../../examples/ch08-appclaw-skills/forms-text.yaml).
 
 ### Run what it wrote
 
@@ -258,7 +258,7 @@ description: >
 ...
 ```
 
-Full version: [examples/wdio-demo-app/SKILL.md](examples/wdio-demo-app/SKILL.md). Rules that make a skill useful:
+Full version: [examples/ch08-appclaw-skills/wdio-demo-app/SKILL.md](../../examples/ch08-appclaw-skills/wdio-demo-app/SKILL.md). Rules that make a skill useful:
 
 - **The description is a trigger, not a summary.** Say *when* to load it ("whenever writing flows for this app"), not only what it contains.
 - **Facts, not prose.** Ids, labels, success texts, credentials that are public. Claude does not need to be told what a tab bar is.
@@ -274,3 +274,5 @@ Creating the folder by hand is fine. `npx skills init wdio-demo-app` scaffolds t
 
 - [Live 8 — Brief the skill before I do](exercises/live.md) (3 min, paper)
 - [Exercise 8 — Generate, break and repair a flow with skills, then write your own](exercises/exercise-8.md) (20 min)
+
+Reference code: [examples/ch08-appclaw-skills/](../../examples/ch08-appclaw-skills/).
