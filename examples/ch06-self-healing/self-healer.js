@@ -116,7 +116,18 @@ async function proposePatchesLlm(failures, dom) {
   const response = await client.chat.completions.create({
     model: process.env.LLM_MODEL || 'llama3.1',
     temperature: 0,
-    response_format: { type: 'json_object' },
+    // json_object only guarantees VALID json — llama3.1 still emitted two top-level
+    // "patches" keys, so JSON.parse kept one patch. A strict schema forces the shape.
+    response_format: {
+      type: 'json_schema',
+      json_schema: { name: 'selector_patches', strict: true, schema: {
+        type: 'object', additionalProperties: false, required: ['patches'],
+        properties: { patches: { type: 'array', items: {
+          type: 'object', additionalProperties: false, required: ['oldSelector', 'newSelector', 'reason'],
+          properties: { oldSelector: { type: 'string' }, newSelector: { type: 'string' }, reason: { type: 'string' } },
+        } } },
+      } },
+    },
     messages: [
       {
         role: 'system',
@@ -124,13 +135,19 @@ async function proposePatchesLlm(failures, dom) {
           'You repair broken Appium selectors by reading the UI hierarchy. ' +
           'A failing ~X means content-desc="X". Pick by priority: content-desc → ~Y; ' +
           'resource-id → //*[@resource-id="Y"]; text → //*[@text="Y"]. Copy values VERBATIM. ' +
+          'Never use a single quote: XPath uses DOUBLE quotes only. One object per failing selector. ' +
+          'Example: failing ~Carousel, hierarchy has resource-id="Carousel" and no content-desc="Carousel" ' +
+          '→ newSelector //*[@resource-id="Carousel"]. Example: failing ~Login-tab, hierarchy has content-desc="login-tab-v2" → newSelector ~login-tab-v2. ' +
           'Reply ONLY with JSON: {"patches":[{"oldSelector":"","newSelector":"","reason":""}]}',
       },
       { role: 'user', content: `Failing selectors:\n${failures.join('\n')}\n\nHierarchy:\n${dom}` },
     ],
   });
   try {
-    return JSON.parse(response.choices[0].message.content).patches || [];
+    const patches = JSON.parse(response.choices[0].message.content).patches || [];
+    // Small models keep writing @attr='v' despite the instruction; the page objects wrap
+    // selectors in single-quoted TS strings, so normalise XPath predicates to double quotes.
+    return patches.map((p) => ({ ...p, newSelector: String(p.newSelector || '').replace(/@([\w-]+)\s*=\s*'([^']*)'/g, '@$1="$2"') }));
   } catch {
     return [];
   }
