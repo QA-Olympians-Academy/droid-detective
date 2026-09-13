@@ -45,17 +45,34 @@ jobs:
       - name: Run the installer as an attendee would (piped into bash)
         run: cat setup.sh | bash
 
+      # The stock Ubuntu ~/.bashrc returns early in a non-interactive shell, so
+      # `source ~/.bashrc` would load nothing. Load only the managed block — what a
+      # new attendee terminal ends up with.
       - name: Verify from a shell that only has the profile block
-        run: bash -c 'source ~/.bashrc && ./setup.sh --check'
+        run: |
+          eval "$(sed -n '/^# >>> droid-detective workshop/,/^# <<< droid-detective workshop/p' ~/.bashrc)"
+          ./setup.sh --check
 
       - name: Boot the emulator and run the smoke test (Linux has KVM)
         if: runner.os == 'Linux'
         env:
           WDIO_EXCLUDE: specs/example.spec.ts
         run: |
-          source ~/.bashrc
+          eval "$(sed -n '/^# >>> droid-detective workshop/,/^# <<< droid-detective workshop/p' ~/.bashrc)"
           HEADLESS=1 ./setup.sh --boot
           # PLAYBOOK §0.8 green condition: the suite starts, installs the app, runs specs.
           # Some assertions fail by design (staged healer demo), so only the install is asserted.
           pnpm test || echo "::warning::pnpm test had failing specs — expected; asserting the app got installed"
           adb shell pm list packages | grep -q com.wdiodemoapp && echo "✓ demo app installed on the emulator"
+
+      - name: Diagnostics (only when a step above failed)
+        if: failure() && runner.os == 'Linux'
+        run: |
+          set +e
+          eval "$(sed -n '/^# >>> droid-detective workshop/,/^# <<< droid-detective workshop/p' ~/.bashrc)"
+          echo "::group::tools on PATH"; for t in node pnpm appium adb emulator java; do printf '%-9s %s\n' "$t" "$(command -v "$t" || echo MISSING)"; done; echo "::endgroup::"
+          echo "::group::AVDs"; ls -la "${ANDROID_AVD_HOME:-$HOME/.android/avd}"; "$ANDROID_HOME/emulator/emulator" -list-avds; echo "::endgroup::"
+          echo "::group::adb devices"; adb devices -l; echo "::endgroup::"
+          echo "::group::emulator log (tail)"; tail -n 80 "$HOME"/.android/emulator-*.log; echo "::endgroup::"
+          echo "::group::appium.log (tail)"; tail -n 60 appium.log; echo "::endgroup::"
+          true
