@@ -147,6 +147,8 @@ async function proposePatchesLlm(failures, dom) {
     const patches = JSON.parse(response.choices[0].message.content).patches || [];
     // Small models keep writing @attr='v' despite the instruction; the page objects wrap
     // selectors in single-quoted TS strings, so normalise XPath predicates to double quotes.
+    console.log(`LLM proposed ${patches.length} patch(es) — validating & normalising`);
+    console.log(`LLM response:\n${JSON.stringify(patches, null, 2)}`);
     return patches.map((p) => ({ ...p, newSelector: String(p.newSelector || '').replace(/@([\w-]+)\s*=\s*'([^']*)'/g, '@$1="$2"') }));
   } catch {
     return [];
