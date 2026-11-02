@@ -13,8 +13,8 @@ would hand an agent. No selectors, no waits:
 ```
 1. tap(~Login-tab)
 2. waitFor(~input-email, 5000)
-3. setValue(~input-email, "demo@wdio.dev")
-4. setValue(~input-password, "Password123!")
+3. setValue(~input-email, "alice@example.com")
+4. setValue(~input-password, "10203040")
 5. tap(~button-LOGIN)
 ```
 
@@ -28,7 +28,7 @@ control, write the selector you would use **and the rule that got you there**.
 
 **Part A** — something close to:
 
-> *"Log in with demo@wdio.dev / Password123! and verify I am logged in."*
+> *"Log in with alice@example.com / 10203040 and verify I am logged in."*
 
 Note what disappeared: the order, the wait, and every selector. Note what appeared: a
 **verification**. A goal has to say what "done" means, because the agent — not you — decides

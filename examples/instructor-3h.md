@@ -208,8 +208,10 @@ with `workshop/07-observability/examples/reasoning-trace-example.md`.
 This block is the second thing to drop if you're behind (after the playground).
 
 **Room exercise — [Live 7: Find the step that should have paged you](../workshop/07-observability/exercises/live.md)**
-(4 min, trace on screen): the room spots the confidence drop in the green run's
-report before you say the punchline.
+(4 min, trace on screen): the room reads
+`workshop/07-observability/examples/reasoning-trace-example.md` — a different
+green run — and finds the drop themselves (Step 2, `HIGH → MEDIUM`). Your demo
+report above flags Step 3 `LOW`; same lesson, two traces.
 
 ## 02:40 — AppClaw skills demo *(live demo, 15 min · Ch8)*
 
