@@ -284,12 +284,12 @@ In agentic automation, "failed" can mean wrong action, bad timing, unfixed root 
 
 ## CI: heal → push → review
 
-The pipeline is the same loop, automated end-to-end:
+The pipeline is the same loop, automated end-to-end — live on PR #7:
 
 - **AppClaw YAML flows** — zero-LLM first gate: fast, free, deterministic
 - **WebdriverIO specs** — self-heal runs **inside** the emulator job (live device for the DOM dump + retry)
 - **Healer pushes the patch** to the PR branch — the fix lands for humans to see
-- **Locator reviewer** comments on the healed selector — brittleness, best practice
+- **Locator reviewer** comments on the PR — an opinion, not evidence: it has no DOM check (on PR #6 it invented `~CarouselButton`)
 
 ---
 
@@ -297,8 +297,8 @@ The pipeline is the same loop, automated end-to-end:
 
 ### Three gates — don't advance the room past a red one
 
-- **00:55** — everyone: `emulator-5554 device` + `pnpm test` runs
-- **01:45** — everyone ran one `appclaw` / flow loop
+- **00:55** — everyone: `emulator-5554 device` + `pnpm test` runs + `appclaw doctor` all ✓
+- **01:45** — everyone ran `flows/login.yaml` to *All steps passed*
 - **02:25** — everyone watched a heal go green
 
 ### If you're behind
@@ -316,6 +316,7 @@ The pipeline is the same loop, automated end-to-end:
 | `adb: no devices` | boot the emulator; `adb kill-server && adb start-server` |
 | Emulator dead-slow | Apple Silicon → `arm64-v8a` image; Intel/CI → enable KVM |
 | Healer "no parseable patch" | 8B format variance — it retries 5×; re-run |
+| `appclaw "goal"` says PASSED, nothing happened | llama3.1 false green — gate on `appclaw doctor` + `claw:flow`, watch the emulator |
 
 ---
 
@@ -324,7 +325,7 @@ The pipeline is the same loop, automated end-to-end:
 ## What you'll walk away with
 
 - A local Android emulator running a real WebdriverIO suite
-- One **agentic** loop driven on a real device by **local llama3.1** — no cloud key
+- A **deterministic flow** you ran on a real device — and an **agentic** run you watched, with a ✓ you now know to check
 - A broken selector **self-healed** to green, in front of you
 - The mental model: **the LLM proposes, the validators dispose** — and where it lives in CI
 

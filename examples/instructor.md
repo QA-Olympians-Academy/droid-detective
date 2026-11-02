@@ -1,8 +1,8 @@
 # Instructor Run-Book — how to run each chapter
 
 Facilitator notes for the full-day workshop (AutomationSTAR schedule in
-[workshop/README.md](../workshop/README.md)). Running a shorter cut instead?
-Use [instructor-3h.md](instructor-3h.md) or [instructor-90m.md](instructor-90m.md).
+[workshop/README.md](../workshop/README.md)). Running the 3-hour cut instead?
+Use [instructor-3h.md](instructor-3h.md).
 For every chapter: what to have
 ready, exactly what to run, what to point at, and how to reset.
 

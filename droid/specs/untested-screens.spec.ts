@@ -8,10 +8,6 @@ describe('WDIO Demo App - Additional Screens', () => {
             await webviewPage.navigate()
         })
 
-        after(async () => {
-            await webviewPage.leave()
-        })
-
         it('should navigate to the Webview screen and render a web view', async () => {
             await expect(webviewPage.webView).toBeDisplayed()
         })

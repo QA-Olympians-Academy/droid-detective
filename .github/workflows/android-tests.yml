@@ -106,6 +106,14 @@ jobs:
           LLM_BASE_URL: http://localhost:11434/v1
           # Skip example.spec.ts in CI (applies to the initial run and the heal retry).
           WDIO_EXCLUDE: specs/example.spec.ts
+          # Quarantine the WebView block in CI only — it still runs locally. On the
+          # software-rendered runner emulator the web page never settles: with
+          # UiAutomator2's idle wait every command takes 10–20 s (runs #30/#31,
+          # 60 s timeouts), without it the scroll races the page load and the app
+          # ANRs ("isn't responding", run #34). Either way the screens after it
+          # fail too, so a broken selector further down is never reached.
+          WDIO_GREP: Webview Screen
+          WDIO_INVERT: '1'
         continue-on-error: true
         id: run_tests
 
