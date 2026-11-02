@@ -163,8 +163,11 @@ stack works). Students should arrive at this state.
 - [ ] `ollama serve` running; `ollama list` shows `llama3.1`.
 - [ ] Emulator boots in < 60 s; `adb devices` clean (kill stale ones: `adb kill-server`).
 - [ ] `pnpm test` runs; note which specs pass/fail so live demos are predictable.
-- [ ] Self-healing demo dry-run works (see §4, block 01:55): break `~Carousel`, run
-      the heal loop, confirm it patches to `//*[@resource-id="Carousel"]` and goes green.
+- [ ] Self-healing demo dry-run works (see §2, block 01:55): set the carousel getter to
+      `~Carousel`, run the heal loop, confirm it patches to `//*[@resource-id="Carousel"]`
+      and goes green.
+- [ ] `ollama list` shows `llama3.1` and `.env` has `LLM_MODEL=llama3.1` — the room's
+      model, so your demos behave like their laptops.
 - [ ] Projector font ≥ 16pt; terminal + editor + emulator window arranged.
 - [ ] A `git stash` / clean branch ready so you can reset demo edits between runs.
 - [ ] Offline fallback: pre-recorded clips of the emulator run and the heal loop,
@@ -180,7 +183,7 @@ stack works). Students should arrive at this state.
 | 00:15 | Architecture in one picture (Appium · MCP · Agent · loop) | Talk | — |
 | 00:30 | **Setup & smoke test** | Hands-on | ✅ everyone green on §0.8 |
 | 00:55 | The agent's mind (goals vs steps, DOM interpretation) | Talk+demo | — |
-| 01:15 | **Hands-on: the execution loop** (AppClaw / agentic run) | Hands-on | ✅ everyone ran one agent loop |
+| 01:15 | **Hands-on: the execution loop** (AppClaw flow · agentic run demoed) | Hands-on | ✅ everyone ran `flows/login.yaml` |
 | 01:45 | *Break* | — | — |
 | 01:55 | **Self-healing** (break → heal → green) | Hands-on | ✅ everyone saw a heal |
 | 02:25 | Observability (reasoning traces, confidence) | Demo | — |
@@ -191,13 +194,22 @@ stack works). Students should arrive at this state.
 
 **00:30 — Setup & smoke test (25 min).** Do *not* teach installation. Run §0.8
 live; walk the room. Gate: every student shows `emulator-5554 device` + a running
-`pnpm test`. Pair anyone stuck with a neighbour. If >2 are red, use a spare
-pre-configured machine / cloud VM.
+`pnpm test` + `appclaw doctor` all ✓. Pair anyone stuck with a neighbour. If >2
+are red, use a spare pre-configured machine / cloud VM.
 
-**01:15 — Execution loop (30 min).** Everyone runs one agentic loop:
+**01:15 — Execution loop (30 min).** Everyone runs the deterministic flow; the
+agentic goal is instructor-driven:
 ```bash
-appclaw "Open the Login screen and log in with demo@wdio.dev / Password123!"
+pnpm run claw:flow flows/login.yaml      # everyone — zero LLM, ~15 s, ✓ All steps passed
+appclaw "Log in with alice@example.com and 10203040 and verify I am logged in"   # instructor
 ```
+> **Why the room doesn't run the goal (dry run, 2 Nov 2026):** on llama3.1,
+> AppClaw 2.6 goal mode reports `✓ 5 passed 5/5 100%` with nothing typed or
+> tapped — the model writes its tool call as prose, and the unverified `done`
+> counts as a pass. qwen2.5:32b logs in for real but took 31 min. Show a
+> recording of the real run; a live llama3.1 run (~5 min) is the lesson that an
+> agent's own "passed" is not evidence — **watch the emulator, not the ✓.**
+
 Show DOM-mode vs vision-mode (in 2.x the switch is `AGENT_MODE`, and inline env
 vars override `.env`):
 ```bash
@@ -228,10 +240,6 @@ AGENT_MODE=vision LLM_MODEL=llama3.2-vision appclaw "Open the Login screen"
 > skeleton is missing.* QA punchline: rich page source = the cheap mode — one
 > more reason to make developers add accessibility ids.
 
-Then the deterministic path (zero LLM):
-```bash
-pnpm run claw:flow flows/login.yaml
-```
 > **Playground mode gotcha:** `pnpm claw:play` opens Terminal Studio in
 > **step-recording** mode — typing a goal sentence there is parsed as one
 > structured step and fails (e.g. `Could not resolve app name "Login screen"`).
@@ -240,25 +248,37 @@ pnpm run claw:flow flows/login.yaml
 
 **01:55 — Self-healing (30 min) — the centrepiece.** Live break→heal:
 ```bash
-# 1. break a selector in a page object (rename to a wrong accessibility id)
-#    e.g. droid/pageobjects/swipe.page.ts:  ~Carousel  → ~Carousel-BROKEN
+# 1. break a selector: the developer moved the carousel's id from content-desc to
+#    resource-id, the test still uses the accessibility id. In
+#    droid/pageobjects/swipe.page.ts set the carousel getter to:  $('~Carousel')
 # 2. run the suite → the swipe tests fail; wdio.conf's afterTest snapshots the DOM
 pnpm test
 # 3. run the healer (local llama3.1, no key). Exclude the known-flaky
 #    example.spec.ts from the retry (same as CI) so a successful heal ends ✅:
 WDIO_EXCLUDE=specs/example.spec.ts node .github/scripts/heal-and-retry.js
+# 4. reset
+git checkout droid/pageobjects/swipe.page.ts
 ```
 Narrate what scrolls by: *detect the genuinely-failed selector → read the
 failure-time DOM snapshot → ask llama3.1 → validate the patch (safe string,
 compiles, only-failing selector, target actually in the DOM) → apply → retry.*
-Expected end state: `✓ patched … → //*[@resource-id="Carousel"]` and
-`✅ Tests passed after self-healing`.
+Expected (dry run, 2 Nov 2026, ~85 s for heal + retry):
+```
+✎ override: model proposed "//android.widget.FrameLayout[@resource-id="Carousel"]",
+  but the DOM has an exact name match for "~Carousel" — using "//*[@resource-id="Carousel"]"
+✓ patched swipe.page.ts: "~Carousel" → "//*[@resource-id="Carousel"]"
+✅ Tests passed after self-healing
+```
 
-> **Teaching point:** the model is non-deterministic (8B). The value isn't a
-> perfect model — it's the **guardrails**: it only patches a selector that
-> failed, only if the new one is valid, compiles, and its target exists in the
-> captured DOM. A bad suggestion is rejected, never applied. Run it twice to show
-> the retry loop absorbing format variance.
+> **Teaching point — the `✎ override` line:** llama3.1 found the right element
+> and the wrong class (the node is a `ViewGroup`). The value isn't a perfect
+> model — it's the **guardrails**: it only patches a selector that failed, only
+> if the new one is valid, compiles, and its target exists in the captured DOM;
+> when the DOM holds an exact match, that ground truth overrides the model.
+>
+> **Don't break it as `~Carousel-BROKEN`.** No node carries that name, so only
+> the model can heal it — and llama3.1 proposed the same FrameLayout xpath 5/5
+> times, rejected 5/5 (temperature 0, so re-running doesn't help).
 
 **02:55 — CI (5 min).** One slide: AppClaw YAML flows (zero-LLM) as the first
 gate; WDIO specs with self-healing *inside* the emulator job; analysis opens an
@@ -268,8 +288,8 @@ issue only when real selectors broke. Point to `.github/workflows/android-tests.
 
 ## 3. Checkpoints (don't advance the room past a red one)
 
-1. **00:55** — `emulator-5554 device` + `pnpm test` runs for everyone.
-2. **01:45** — everyone completed one `appclaw` / flow run.
+1. **00:55** — `emulator-5554 device` + `pnpm test` runs + `appclaw doctor` all ✓ for everyone.
+2. **01:45** — everyone ran `flows/login.yaml` to `✓ All steps passed`.
 3. **02:25** — everyone watched a heal go green (or ran it themselves).
 
 ---
@@ -295,6 +315,10 @@ issue only when real selectors broke. Point to `.github/workflows/android-tests.
 | Ollama call hangs / very slow | first load into RAM, or low RAM | pre-`ollama run llama3.1` once; close other apps |
 | Healer: "no parseable patch" every retry | 8B format non-determinism | expected occasionally; the script retries 5× — re-run |
 | Healer patches a wrong selector | model hallucinated a value | it won't apply — the DOM-existence guard rejects targets not in the snapshot |
+| Healer: `✗ reject (target not in captured DOM)` on every run, `No patches applied` | the break renamed the id to something absent from the DOM (`~Carousel-BROKEN`), so the deterministic fallback has nothing to match and llama3.1's xpath guess is wrong | break it as `~Carousel` instead (§2, 01:55) — the DOM-derived patch heals it every time |
+| AppClaw goal run: `✓ PASSED` / `5/5 100%` but nothing happened on the emulator | llama3.1 writes its tool call as prose; AppClaw 2.6 counts the unverified `done` as a pass (`! Done verification failed: Model response did not contain a tool call`) | don't gate on goal runs — use `appclaw doctor` and `claw:flow`; show goal runs as instructor demos |
+| AppClaw: `Orchestrator check failed: … Multimodal data provided, but model does not support multimodal requests` | `VISION_MODE` defaults to `fallback`, which sends screenshots to the text-only llama3.1 | add `VISION_MODE=never` to `.env` (in `.env.example` since 2 Nov) |
+| AppClaw / healer: `model 'llama3.1' not found` after the one-line installer | `setup.sh` pulled `llama3.2:3b` between 13 Sep and 2 Nov while `.env` says `llama3.1` | `ollama pull llama3.1` (4.9 GB), or set `LLM_MODEL=llama3.2:3b` in `.env` |
 | `setup.sh`: `Homebrew is required on macOS` | fresh Mac | install Homebrew from brew.sh, open a new terminal, re-run |
 | `setup.sh`: `step failed: …` | one step errored (network, sudo declined, …) | fix what the error above it says, re-run the same command — it resumes where it stopped |
 | `setup.sh` on Windows: `Unsupported OS` / `bash: command not found` | run from PowerShell or Git Bash | run it inside WSL2 (Ubuntu). The emulator additionally needs nested virtualization (`nestedVirtualization=true` under `[wsl2]` in `%UserProfile%\.wslconfig`) or run the emulator in Android Studio on the Windows side |

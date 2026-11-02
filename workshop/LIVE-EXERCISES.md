@@ -19,7 +19,7 @@ so run **one** of Live 9 / 10 / 11.
 | 00:15 | 2 | [Who detects, who decides, who executes](02-arch-foundations/exercises/live.md) | 4 min | paper | assign four jobs to four components |
 | 00:30 | 3 | [The 60-second green check](03-setup/exercises/live.md) | 5 min | laptop + emulator | run the four verify commands |
 | 00:55 | 4 | [Steps in, goal out](04-agent-mind/exercises/live.md) | 4 min | DOM on screen | collapse a script into a goal; pick a selector |
-| 01:15 | 5 | [Predict the loop, then run it](05-execution-loop/exercises/live.md) | 5 min | laptop + emulator | predict turns, run one agentic goal |
+| 01:15 | 5 | [Predict the loop, then run it](05-execution-loop/exercises/live.md) | 5 min | laptop + emulator | predict turns, watch the goal run, run the YAML flow |
 | 01:55 | 6 | [Heal it offline, then break the healer](06-self-healing/exercises/live.md) | 5 min | **laptop only** | run the offline healer, read the diff |
 | 02:25 | 7 | [Find the step that should have paged you](07-observability/exercises/live.md) | 4 min | trace on screen | spot the confidence drop in a green run |
 | 02:40 | 8 | [Brief the skill before I do](08-appclaw-skills/exercises/live.md) | 3 min | paper | write the flow request + done-condition before the skill runs |

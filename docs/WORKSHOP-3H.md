@@ -70,7 +70,7 @@ By the end of the session, each participant can:
 - `pnpm install` + driver install.
 - Configure `.env` (walk the key vars).
 - Smoke test: `pnpm test` → it must start, install the app and run specs (failing assertions are OK).
-- Validate agentic stack: `appclaw "Open the Login screen"` → `✓ Navigated to Login screen`.
+- Validate agentic stack: `appclaw doctor` → `✓ Config valid — … model llama3.1` and `✓ 1 device(s) connected`. (Not a goal run — on llama3.1 those report PASSED regardless of outcome.)
 - **Checkpoint:** everyone raises a hand when green before moving on.
 
 ### 00:55 — The agent's mind (20 min)
@@ -86,10 +86,10 @@ By the end of the session, each participant can:
 *Full detail: WORKSHOP.md Chapter 5.*
 
 - The Think → Act → Observe loop diagram.
-- **Everyone runs:** `appclaw "Log in with alice@example.com and 10203040 and verify I am logged in"`.
+- **Everyone runs:** `pnpm run claw:flow flows/login.yaml` — deterministic, zero LLM cost, ~15 s.
+- **Instructor shows** the same journey as a goal: `appclaw "Log in with alice@example.com and 10203040 and verify I am logged in"` (recording of a real run; the llama3.1 run reports a false green — use it as the lesson that an agent's own "passed" is not evidence).
 - DOM mode vs Vision mode — when to switch.
 - Playground demo: `pnpm run claw:play` → record → `/export` to a YAML flow.
-- YAML flows = deterministic, zero LLM cost: `pnpm run claw:flow flows/login.yaml`.
 - Credentials via `.appclaw/env/` — never hardcode.
 - *Referenced, not run:* The Bot / LambdaTest (Ch5 back half) — mention as the production path.
 
@@ -100,7 +100,7 @@ By the end of the session, each participant can:
 
 - Three categories of fixable failure: rename, structural change, flow change.
 - The healing loop: parse log → dump live DOM → Claude returns patch array → apply → retry.
-- **Exercise 6 — Break → Watch → Heal:** attendees rename a selector, run, watch it heal, retry green.
+- **Exercise 6 — Break → Watch → Heal:** attendees set the carousel selector to `~Carousel` (the id moved to resource-id), run, watch the guard override the model's wrong guess, retry green.
 - Adaptive navigation table (dialog / splash / wrong screen / loading).
 - **Land the boundary:** self-healing is a resilience layer, *not* a cover for real regressions — do not heal functional bugs, changed business logic, or wrong assertions.
 
@@ -147,6 +147,6 @@ By the end of the session, each participant can:
 ## Facilitator notes
 
 - **Pre-work is mandatory.** Send the Chapter 3 install table 3–4 days ahead; the 25-min setup block assumes tools are already installed. **Critically, attendees must `ollama pull llama3.1` beforehand** — it's a ~4.7 GB download that will not finish during the session on conference Wi-Fi. No cloud LLM key is needed; the model runs locally.
-- **Two checkpoints gate the session:** green smoke test (00:55) and a successful `appclaw` login run (01:45). Do not advance the room past a checkpoint with more than a couple of people stuck — pair them up.
+- **Three checkpoints gate the session:** green smoke test + `appclaw doctor` (00:55), `flows/login.yaml` passing (01:45), and a heal gone green (02:25). Do not advance the room past a checkpoint with more than a couple of people stuck — pair them up.
 - **If you're running behind,** drop the Playground recording sub-section (01:15) and the observability demo (02:25) first; keep setup and self-healing intact.
 - **If you're ahead,** pull in one game from Chapter 11 (Locator Quiz, 8 min) before Q&A.

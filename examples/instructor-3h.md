@@ -22,7 +22,7 @@ ls apps/demo.apk                        # demo app in place (PLAYBOOK-3H §0.6 t
 #   -n workshop_avd -k "system-images;android-34;google_apis;arm64-v8a" -d pixel_6 --force
 emulator -avd workshop_avd &            # boot + verify
 adb devices                             # expect: emulator-5554   device
-ollama pull llama3.1 && ollama run llama3.1 ''   # pull AND warm the local model
+ollama pull llama3.1 && ollama run llama3.1 "hi"   # pull AND warm the local model
 # AppClaw CLI is a global install — verify it, then smoke the flow:
 appclaw --version || npm i -g @appclaw/cli
 pnpm claw:flow flows/login.yaml
@@ -33,7 +33,8 @@ Smoke-test the demos you'll run live — in schedule order:
 ```bash
 pnpm exec ts-node examples/ch04-agent-mind/run.ts        # 00:55 demo (offline)
 pnpm test                                                # 00:30 gate + ch6 baseline
-node .github/scripts/heal-and-retry.js                   # 01:55 dry-run (see below)
+# 01:55 dry-run — break the selector first (see below), then:
+WDIO_EXCLUDE=specs/example.spec.ts node .github/scripts/heal-and-retry.js
 pnpm exec ts-node examples/ch07-observability/run.ts     # 02:25 demo (offline)
 ```
 
@@ -66,8 +67,12 @@ Do **not** teach installation — pre-work (PLAYBOOK-3H §0) is mandatory. Run t
 adb devices                          # emulator-5554  device
 curl -s http://localhost:11434/api/tags >/dev/null && echo "✓ ollama up"
 pnpm test                            # suite starts, app installs, specs run
-pnpm claw "Open the Login screen"    # ✓ Navigated to Login screen
+appclaw doctor                       # ✓ Config valid — model llama3.1 · ✓ 1 device(s) connected
 ```
+
+Validate the agentic stack with `appclaw doctor`, **not** an `appclaw "goal"`
+run: on llama3.1 a goal run reports PASSED whether or not anything happened
+(see 01:15), so it proves nothing at the gate.
 
 **Checkpoint 1 — gate everything on this.** Hands up when green; pair anyone
 stuck with a neighbour. More than two red → spare machine / cloud VM, keep moving.
@@ -87,24 +92,33 @@ group think-aloud, not solo work.
 
 ## 01:15 — Hands-on: the execution loop *(30 min · Ch5)*
 
-Everyone runs one agentic loop, then sees the deterministic replay:
+The room runs the deterministic flow; the agentic goal is **instructor-driven**:
 
 ```bash
-# 1. natural-language agentic run (everyone):
+# 1. everyone — deterministic YAML flow, zero LLM, ~15 s, 10/10 steps:
+pnpm run claw:flow flows/login.yaml
+# 2. instructor — the same journey as one plain-English goal (recording, or live):
 pnpm claw "Log in with alice@example.com and 10203040 and verify I am logged in"
-# 2. playground: record → /export to YAML (demo, drop first if behind).
+# 3. playground: record → /export to YAML (demo, drop first if behind).
 #    Opens in step-recording mode — `/mode goal` to type goal sentences instead:
 pnpm run claw:play
-# 3. deterministic YAML replay — zero LLM cost:
-pnpm run claw:flow flows/login.yaml
 ```
+
+**Why the room doesn't run the goal (dry run, 2 Nov):** on llama3.1 AppClaw's
+goal mode reports *"✓ 5 passed 5/5 100%"* while nothing was typed or tapped —
+the model writes its tool call as prose ("I will use find_and_click…"), and
+AppClaw counts the unverified `done` as a pass. "Open the Login screen" printed
+`VERIFICATION FAILED` and then `✓ PASSED`. qwen2.5:32b does the login for real
+but needed 31 min. Show a recording of the real run; if you show the llama3.1
+run live (~5 min), use it as the lesson: **a green the agent reports is not
+evidence** — the deterministic flow and the healer's DOM guard are.
 
 Narrate the per-step ✓/✗ log with the Think → Act → Observe diagram; show
 DOM mode vs Vision mode; land credentials-via-`.appclaw/env/` in one sentence.
 The Bot / LambdaTest path is **referenced only** — mention `pnpm bot` as the
 cloud-device variant and move on.
 
-**Checkpoint 2:** everyone completed one `appclaw` or flow run before the break.
+**Checkpoint 2:** everyone ran `flows/login.yaml` to *✓ All steps passed* before the break.
 
 ## 01:45 — Break (10 min) ☕
 
@@ -116,21 +130,36 @@ emulator alive, Ollama warm.
 Live break → heal against the real suite (not the offline fixture demo):
 
 ```bash
-# 1. attendees rename a selector in a page object, e.g.
-#    droid/pageobjects/swipe.page.ts:  ~Carousel → ~Carousel-BROKEN
+# 1. attendees play the developer who moved the carousel's id from content-desc
+#    to resource-id — the test still uses the old accessibility id. In
+#    droid/pageobjects/swipe.page.ts set the carousel getter to:
+#        return $('~Carousel')
 pnpm test                                # swipe tests fail; afterTest snapshots the DOM
-node .github/scripts/heal-and-retry.js   # local llama3.1 proposes, guardrails dispose
-git checkout droid/pageobjects           # reset after
+WDIO_EXCLUDE=specs/example.spec.ts node .github/scripts/heal-and-retry.js
+git checkout droid/pageobjects/swipe.page.ts   # reset after
 ```
 
 Narrate the five steps as they scroll: detect failed selector → read the
 failure-time DOM snapshot → ask llama3.1 → validate (compiles, only-failing
-selector, target exists in the DOM) → apply & retry. Expected end state:
-`✓ patched … → //*[@resource-id="Carousel"]` then `✅ Tests passed after self-healing`.
+selector, target exists in the DOM) → apply & retry. Expected output (dry run,
+2 Nov — ~85 s for heal + retry):
 
-**Teaching point:** the 8B model is non-deterministic — the value is the
-guardrails, not the model. Run it twice to show the retry loop absorbing
-format variance. If the emulator misbehaves, fall back to the offline demo:
+```
+✎ override: model proposed "//android.widget.FrameLayout[@resource-id="Carousel"]",
+  but the DOM has an exact name match for "~Carousel" — using "//*[@resource-id="Carousel"]"
+✓ patched swipe.page.ts: "~Carousel" → "//*[@resource-id="Carousel"]"
+✅ Tests passed after self-healing
+```
+
+**Teaching point — point at the `✎ override` line:** llama3.1 got the element
+right and the class wrong (the node is a `ViewGroup`, not a `FrameLayout`). A
+blind patch would have stayed red; the guard checked the DOM and replaced it
+with the ground truth. *The LLM proposes, the validators dispose* — live.
+
+**Do not use a `~Carousel-BROKEN` style break.** No node carries that name, so
+only the model can fix it — and llama3.1 proposed the same FrameLayout xpath
+5/5 times, rejected 5/5 (temperature 0: re-running doesn't help). If the
+emulator misbehaves, fall back to the offline demo:
 `node examples/ch06-self-healing/self-healer.js`.
 
 **Land the boundary:** healing is a resilience layer, **not** a cover for real
@@ -192,10 +221,12 @@ rm -rf examples/ch06-self-healing/.healed examples/ch07-observability/trace-repo
 ## Gotchas
 
 The full troubleshooting table (every failure was hit for real) is in
-[docs/PLAYBOOK-3H.md](../docs/PLAYBOOK-3H.md) §4. The three that bite mid-session:
+[docs/PLAYBOOK-3H.md](../docs/PLAYBOOK-3H.md) §4. The ones that bite mid-session:
 
 - Ollama's first call loads the model into RAM and looks like a hang — warm it
-  (`ollama run llama3.1 ''`) before 00:30 and again during the break.
+  (`ollama run llama3.1 "hi"`) before 00:30 and again during the break.
+- An `appclaw "goal"` run on llama3.1 says PASSED regardless of the outcome —
+  never use one as a checkpoint; `appclaw doctor` and `claw:flow` are the gates.
 - AppClaw is a global install (`npm i -g @appclaw/cli`) — verify
   `appclaw --version` the day before, not at 01:15.
 - Healer prints "no parseable patch" — expected occasionally with an 8B model;

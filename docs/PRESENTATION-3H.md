@@ -121,6 +121,60 @@ Agents handle mechanical adaptation. Engineers handle goals, strategy, and judge
 
 ---
 
+<!-- _class: title -->
+
+# The Agent's Mind
+
+## Goals, not steps
+
+---
+
+## Goal vs script
+
+| Script (steps) | Goal (intent) |
+|----------------|---------------|
+| tap `~input-email`, type…, tap `~input-password`, type…, tap `~button-LOGIN`, assert… | "Log in with valid credentials and verify no error message is shown" |
+| Breaks when any step's selector moves | Re-planned against the screen that is actually there |
+| You maintain the *how* | You own the *what* — the agent derives the *how* |
+
+---
+
+## How the agent ranks a locator
+
+Every interactable element gets ranked candidates — best first:
+
+| Score | Strategy | Why |
+|-------|----------|-----|
+| **95** | `~button-LOGIN` (content-desc) | set for accessibility — survives copy and layout changes |
+| **80** | `//*[@resource-id="…:id/btn_login"]` | developer-assigned — stable unless the view is renamed |
+| **40** | `//*[@text="LOGIN"]` | breaks on copy changes and localisation |
+| **10** | `//android.widget.Button` | matches every sibling — last resort |
+
+Gotcha: the id is `button-LOGIN`, **not** `LOGIN-button`. The plan comes from the DOM, never from assumptions.
+
+---
+
+<!-- _class: demo -->
+
+## Live: goal → plan, offline
+
+```bash
+pnpm exec ts-node examples/ch04-agent-mind/run.ts
+```
+
+```
+Goal: "Log in with valid credentials and verify no error message is shown"
+ 1. [type]               ~input-email           "alice@example.com"
+ 2. [type]               ~input-password        "••••••••"
+ 3. [tap]                ~button-LOGIN
+ 4. [assert_not_visible] ~sign-in-error-message
+```
+
+- Each step carries **fallbacks** — the next-ranked locators if the best one fails
+- "verify **no** error" → assert it stays **hidden**: the plan reads the goal, not just the nouns
+
+---
+
 <!-- _class: demo -->
 
 ## The execution loop — Think → Act → Observe
@@ -128,15 +182,31 @@ Agents handle mechanical adaptation. Engineers handle goals, strategy, and judge
 The model reasons about the current DOM, calls a tool, observes the new state, and repeats until the goal is met.
 
 ```bash
-# one plain-English goal → the agent drives a real device
-appclaw "Log in with demo@wdio.dev / Password123! and verify I am logged in"
-
-# deterministic, zero-LLM path for CI
+# you run — deterministic, zero-LLM, the path for CI
 pnpm run claw:flow flows/login.yaml
+
+# I run — one plain-English goal → the agent drives a real device
+appclaw "Log in with alice@example.com and 10203040 and verify I am logged in"
 ```
 
 - **DOM mode** — reads the accessibility tree (fast, standard apps)
 - **Vision mode** — reads a screenshot (games, custom renderers)
+
+---
+
+## Watch the emulator, not the ✓
+
+Dry run on llama3.1, the night before this workshop:
+
+- AppClaw reported **`✓ 5 passed 5/5 100%`** — nothing was typed, nothing was tapped
+- The model *described* its tool call in prose; the unverified `done` counted as a pass
+- A 32B model did the login for real — in **31 minutes**
+
+### The lesson
+
+- An agent's own "passed" is **not evidence**
+- Evidence is deterministic: a YAML flow, an assertion, a selector checked against the DOM
+- That's why the healer has guardrails — next section
 
 ---
 

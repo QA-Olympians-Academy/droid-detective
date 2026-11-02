@@ -22,7 +22,7 @@ import { type LocatorMapEntry } from './dom-interpreter';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export type PlannedActionType = 'tap' | 'type' | 'assert_visible';
+export type PlannedActionType = 'tap' | 'type' | 'assert_visible' | 'assert_not_visible';
 
 export interface PlannedStep {
   step: number;
@@ -100,22 +100,31 @@ export function planGoal(goal: string, map: LocatorMapEntry[], data: TestData): 
   }
 
   // 2. Primary action — the verb the goal names, matched against the screen.
+  //    'button' breaks the tie between the Login *tab* and the LOGIN *button*:
+  //    both match "log in", only the submit control says it is a button.
   const actionWords = ['login', 'log in', 'submit', 'sign up', 'checkout', 'add to cart']
     .filter((verb) => goal.toLowerCase().includes(verb))
     .flatMap((verb) => verb.split(' '));
-  const button = findEntry(map, ...(actionWords.length ? actionWords : ['button']));
+  const button = findEntry(map, ...actionWords, 'button');
   if (button) {
     steps.push(toStep(n++, `Tap the primary action for "${goal}"`, 'tap', button));
   }
 
   // 3. Verification — the agent never ends a plan without a check. If the goal
-  //    names a target state ("verify the home screen"), assert on it; the demo
-  //    screen exposes the error message element, so assert it stays hidden.
+  //    names a target state ("verify the home screen"), assert on it; a negated
+  //    check ("verify NO error message") asserts the element stays hidden.
   const verify =
     findEntry(map, ...goal.toLowerCase().split(/\W+/).filter((w) => w.length > 3)) ??
     findEntry(map, 'error', 'message');
   if (verify) {
-    steps.push(toStep(n++, `Verify the outcome of "${goal}"`, 'assert_visible', verify));
+    const check = goal.toLowerCase().split(/\bverify\b/).pop() ?? '';
+    const expectHidden = /\b(no|not|without)\b/.test(check);
+    steps.push(toStep(
+      n++,
+      `Verify the outcome of "${goal}"`,
+      expectHidden ? 'assert_not_visible' : 'assert_visible',
+      verify,
+    ));
   }
 
   return steps;

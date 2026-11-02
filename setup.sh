@@ -4,7 +4,7 @@
 #
 #  One command installs (or repairs) everything the Agentic Mobile QA workshop
 #  needs: Node + pnpm, JDK 17, the Android SDK + emulator + AVD, Appium with
-#  the UiAutomator2 driver, the AppClaw CLI, Ollama + llama3.2:3b, this repo, its
+#  the UiAutomator2 driver, the AppClaw CLI, Ollama + llama3.1, this repo, its
 #  dependencies, the demo APK and .env. Every step is idempotent — re-run it as
 #  often as you like; it only does what is still missing.
 #
@@ -24,8 +24,8 @@
 #                      on macOS, ~/Android/Sdk on Linux)
 #    ANDROID_AVD_HOME  where the emulator AVD lives    (default: ~/.android/avd)
 #    WORKSHOP_MIRROR   directory with pre-downloaded big files — see "Mirror"
-#    SKIP_MODEL=1      do not pull the LLM (2.0 GB)
-#    LLM_MODEL         model to pull                (default: llama3.2:3b)
+#    SKIP_MODEL=1      do not pull the LLM (4.9 GB)
+#    LLM_MODEL         model to pull                (default: llama3.1)
 #    HEADLESS=1        with --boot: no emulator window (CI / servers)
 #
 #  Supported: macOS (Apple Silicon + Intel), Linux x86_64, Windows via WSL2.
@@ -43,7 +43,7 @@ APK_REPO="webdriverio/native-demo-app"
 API_LEVEL="${API_LEVEL:-34}"
 BUILD_TOOLS="${BUILD_TOOLS:-34.0.0}"
 AVD_NAME="${AVD_NAME:-workshop_avd}"
-LLM_MODEL="${LLM_MODEL:-llama3.2:3b}"
+LLM_MODEL="${LLM_MODEL:-llama3.1}"
 CMDLINE_TOOLS_BUILD="${CMDLINE_TOOLS_BUILD:-13114758}"   # exists for both mac and linux
 NODE_LINE="${NODE_LINE:-24}"          # Node major installed on Linux when none ≥ NODE_MIN is present
 NODE_MIN=20
@@ -393,7 +393,7 @@ ensure_model() {
     mkdir -p "$dest"; cp -R "$WORKSHOP_MIRROR/ollama/models/." "$dest/"
     model_present && { ok "present (from mirror)"; return; }
   fi
-  info "pulling $LLM_MODEL (~2 GB — do this on good Wi-Fi)"
+  info "pulling $LLM_MODEL (~4.9 GB — do this on good Wi-Fi)"
   ollama pull "$LLM_MODEL"
   ok "pulled"
 }
