@@ -17,16 +17,19 @@ import { readPageObjects } from './page-objects.service';
 import { applyPatches } from './patch.service';
 
 async function main(): Promise<void> {
+    // Invoked only after `pnpm test` failed (`pnpm test || heal-and-retry`), so
+    // every path that heals nothing must exit non-zero — exiting 0 here turned a
+    // red test run into a green CI step (timeouts are not selector failures).
     console.log('🔧 Self-healing: reading failure log…');
     const log = readLog();
     if (log === null) {
-        console.log('No appium.log found — skipping self-heal');
-        process.exit(0);
+        console.log('No appium.log found — skipping self-heal; the test failure stands');
+        process.exit(1);
     }
     const failures = extractFailures(log);
     if (failures.length === 0) {
-        console.log('No selector failures detected — nothing to heal');
-        process.exit(0);
+        console.log('No selector failures detected — nothing to heal; the test failure stands');
+        process.exit(1);
     }
 
     console.log(`Found ${failures.length} selector failure(s)`);
