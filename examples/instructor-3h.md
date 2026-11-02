@@ -4,8 +4,7 @@ Facilitator notes for the 3-hour cut ([docs/WORKSHOP-3H.md](../docs/WORKSHOP-3H.
 is the agenda; [docs/PLAYBOOK-3H.md](../docs/PLAYBOOK-3H.md) has the student
 prerequisites, pre-flight checklist, and troubleshooting table — this file does
 not repeat them). For every block: exactly what to run, what to point at, and
-how to reset. See also [instructor.md](instructor.md) (the full-day run-book) and
-[instructor-90m.md](instructor-90m.md) (the 90-minute cut).
+how to reset. See also [instructor.md](instructor.md) (the full-day run-book).
 
 **The 3-hour format is fully local: Ollama + llama3.1, no cloud LLM key.**
 
