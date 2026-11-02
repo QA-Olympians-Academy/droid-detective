@@ -18,6 +18,7 @@ App: com.wdiodemoapp on emulator-5554 (already installed).
 Journey: open the Forms tab, type "hello" into the text input, verify the result label shows "hello".
 Known accessibility ids: tabs Home | Webview | Login | Forms | Swipe | Drag; input text-input; result label input-text-result.
 Phased format. Write to flows/forms-text.yaml.
+Validate with `appclaw --flow flows/forms-text.yaml` (this repo has no src/index.ts).
 ```
 
 **Stop at the plan.** The skill proposes before it writes. Check the plan against this list before you say yes:

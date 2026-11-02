@@ -181,22 +181,42 @@ This block is the second thing to drop if you're behind (after the playground).
 
 ## 02:40 — AppClaw skills demo *(live demo, 15 min · Ch8)*
 
-Speaker-driven — no solo exercise in this format:
+Speaker-driven — no solo exercise in this format. Open Claude Code in the project
+root (`claude`) and paste this request (Exercise 8 Part A):
 
-```bash
-# 1. GENERATE — in Claude Code from the project root, with the Part A request from
-#    workshop/08-appclaw-skills/exercises/exercise-8.md:
-/generate-appclaw-flow  <request>            # stop at the plan, room approves
-# 2. RUN — twice, the second time strict:
-pnpm run claw:flow flows/forms-text.yaml
-appclaw --flow flows/forms-text.yaml --strict
-# 3. DIAGNOSE — misspell a label, paste the failure into /use-appclaw-cli
 ```
+/generate-appclaw-flow
+
+App: com.wdiodemoapp on emulator-5554 (already installed).
+Journey: open the Forms tab, type "hello" into the text input, verify the result label shows "hello".
+Known accessibility ids: tabs Home | Webview | Login | Forms | Swipe | Drag; input text-input; result label input-text-result.
+Phased format. Write to flows/forms-text.yaml.
+Validate with `appclaw --flow flows/forms-text.yaml` (this repo has no src/index.ts).
+```
+
+1. **PLAN** — the skill proposes before it writes. Stop there; check it with the
+   room against the Exercise 8 list (appId, `waitUntil "Forms"`, tab id `Forms`,
+   targeted `type "hello" in the text-input field`, an assertion on "hello").
+   Approve.
+2. **RUN** — twice, the second time strict (dry run, 2 Nov: 8/8 both, ~23 s each):
+
+   ```bash
+   pnpm run claw:flow flows/forms-text.yaml
+   appclaw --flow flows/forms-text.yaml --strict
+   ```
+
+3. **DIAGNOSE** — change `tap: "Forms"` to `tap: "Froms"`, run strict again, paste
+   the failure (`No matching element for "Froms"`) into `/use-appclaw-cli`. It
+   should name the typo. If it suggests `VISION_MODE=fallback`, decline out loud:
+   llama3.1 is text-only — the fix is the label, not vision.
+
+Why the extra "Validate with" line: the skill is vendored from the AppClaw repo
+and its validate step runs `npx tsx src/index.ts`, which only exists there.
 
 Hit what the skill cannot know (accessibility ids, success text: run a weak request
 first and let `--strict` fail on the guessed step) and the operator skill's safety
-line (`--flow` runs freely, any goal run asks first). Reference answers:
-`examples/ch08-appclaw-skills/`.
+line (`--flow` runs freely, any goal run asks first). Reference answer if the live
+generation goes sideways: `appclaw --flow examples/ch08-appclaw-skills/forms-text.yaml --strict`.
 
 ## 02:55 — CI, wrap-up & Q&A *(5 min · Ch9–11)*
 
@@ -216,6 +236,7 @@ with healing inside the emulator job — point at
 ```bash
 git checkout droid/pageobjects examples/          # undo live-demo damage
 rm -rf examples/ch06-self-healing/.healed examples/ch07-observability/trace-report.md
+rm -f flows/forms-text.yaml                       # the 02:40 skill demo writes it fresh each session
 ```
 
 ## Gotchas
