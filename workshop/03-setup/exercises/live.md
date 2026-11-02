@@ -12,7 +12,7 @@ Run these four, in order. Each one is a yes/no:
 ```bash
 adb devices          # expect:  emulator-5554   device
 ollama list          # expect:  llama3.1 in the list
-appclaw --version    # expect:  2.x
+appclaw doctor       # expect:  all ✓ — "model llama3.1, dom mode" + "1 device(s) connected"
 pnpm test            # expect:  it starts, installs the app, and runs specs
 ```
 
@@ -36,6 +36,7 @@ The usual four failures, in order of how often they happen:
 | `Could not find 'aapt2'` | `sdkmanager "build-tools;34.0.0"` |
 | `Unknown AVD name [workshop_avd]` | AVD never created — see PLAYBOOK §0.8 step 0 |
 | `appclaw` missing or 1.x | `npm i -g @appclaw/cli` (the **scoped** package) |
+| `appclaw doctor` shows a model other than `llama3.1` | run it from the repo root (so `.env` loads); check `LLM_MODEL=llama3.1` in `.env` |
 
 ---
 

@@ -23,10 +23,12 @@ For each scenario, call it: **(a)** heals and pushes the patch to the PR ·
 
 1. **(a)** — the healer patches the selector from the live DOM, retries, and on success
    commits and pushes the patch to your PR, where it is reviewed like any other diff.
-2. **(b)** — healing cannot recover a real behaviour change. `analyse-failures.js` turns
-   `appium.log` into a structured issue (summary · failing tests · error detail · suggested
-   fix) and **the job still fails**. Self-healing is a resilience layer, not a cover for
-   regressions.
+2. **(b)** — healing cannot recover a real behaviour change: the healer finds no selector
+   failure, says *"nothing to heal; the test failure stands"*, and **the job fails**. On
+   `main`, `analyse-failures.js` also turns `appium.log` into a structured issue (summary ·
+   failing tests · error detail · suggested fix); on a PR the red check is the signal — no
+   issue is opened. Self-healing is a resilience layer, not a cover for regressions.
+   (Before 2 Nov the healer exited 0 here and this job went green — Android Tests #30.)
 3. **(c)** for the push — fork PRs get a read-only token, so the healer cannot commit back.
    The tests still run; only the write-back is blocked.
 

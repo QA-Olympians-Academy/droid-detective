@@ -9,6 +9,12 @@ how to reset. See also [instructor.md](instructor.md) (the full-day run-book) an
 
 **The 3-hour format is fully local: Ollama + llama3.1, no cloud LLM key.**
 
+Each block ends with its **Room exercise** — the 2–5 minute Live exercise from
+[workshop/LIVE-EXERCISES.md](../workshop/LIVE-EXERCISES.md). They add no time: in
+talk blocks they replace 3–5 minutes of talking, in hands-on blocks they are the
+first thing the room does. Behind schedule? Cut Live 2, then 7, then 4 — keep 3,
+5 and 6, and always end on one closer from 9 / 10 / 11.
+
 ---
 
 ## Before the workshop (once, the day before)
@@ -50,6 +56,10 @@ No code required. Optional hook demo: open
 selector, run `pnpm test`, let the wall of red make the argument
 (`git checkout droid/pageobjects` to undo). Keep the poll to one minute.
 
+**Room exercise — [Live 1: Name your own three](../workshop/01-story-shift/exercises/live.md)**
+(3 min, paper): each person classifies their last broken test against the three
+structural problems.
+
 ## 00:15 — Architecture in one picture *(talk, 15 min · Ch2)*
 
 The two pipeline diagrams from
@@ -57,6 +67,9 @@ The two pipeline diagrams from
 The file-by-file repo walk is **cut** in this format — just name the four
 directories once: `droid/` (classic WDIO), `bot/` (custom agent), `flows/`
 (AppClaw YAML), `examples/` (per-chapter code).
+
+**Room exercise — [Live 2: Who detects, who decides, who executes](../workshop/02-arch-foundations/exercises/live.md)**
+(4 min, paper): assign four jobs to the four components. First to cut if behind.
 
 ## 00:30 — Setup & smoke test *(hands-on, 25 min · Ch3)*
 
@@ -74,6 +87,10 @@ Validate the agentic stack with `appclaw doctor`, **not** an `appclaw "goal"`
 run: on llama3.1 a goal run reports PASSED whether or not anything happened
 (see 01:15), so it proves nothing at the gate.
 
+**Room exercise — [Live 3: The 60-second green check](../workshop/03-setup/exercises/live.md)**
+(5 min, laptop + emulator): the room runs the verify commands above themselves —
+this *is* the gate, so run it first in the block, then spend the rest on stragglers.
+
 **Checkpoint 1 — gate everything on this.** Hands up when green; pair anyone
 stuck with a neighbour. More than two red → spare machine / cloud VM, keep moving.
 
@@ -87,10 +104,16 @@ pnpm exec ts-node examples/ch04-agent-mind/run.ts
 
 Show the locator map first (ranked selectors per element), then the plan.
 Point at the `~button-LOGIN` vs `~LOGIN-button` gotcha in the sample XML.
-Run exercises 4a/4b from `workshop/04-agent-mind/exercises/` as a 3-minute
-group think-aloud, not solo work.
+
+**Room exercise — [Live 4: Steps in, goal out](../workshop/04-agent-mind/exercises/live.md)**
+(4 min, DOM on screen): collapse a step script into one goal, pick a selector.
+(The 15-minute labs 4a/4b are full-day / take-home — not in this format.)
 
 ## 01:15 — Hands-on: the execution loop *(30 min · Ch5)*
+
+**Room exercise first — [Live 5: Predict the loop, then run it](../workshop/05-execution-loop/exercises/live.md)**
+(5 min, laptop + emulator): the room predicts turns, watches your goal run, then
+runs the flow themselves — which is checkpoint 2.
 
 The room runs the deterministic flow; the agentic goal is **instructor-driven**:
 
@@ -127,7 +150,12 @@ emulator alive, Ollama warm.
 
 ## 01:55 — Self-healing *(hands-on, 30 min · Ch6 — the centrepiece)*
 
-Live break → heal against the real suite (not the offline fixture demo):
+**Room exercise first — [Live 6: Heal it offline, then break the healer](../workshop/06-self-healing/exercises/live.md)**
+(5 min, laptop only — no emulator, no model): everyone runs
+`node examples/ch06-self-healing/self-healer.js` and reads the diff. It also gives
+anyone whose emulator died a way into this block.
+
+Then the live break → heal against the real suite:
 
 ```bash
 # 1. attendees play the developer who moved the carousel's id from content-desc
@@ -179,10 +207,20 @@ step** — observability finds the flake before it becomes a red build. Compare
 with `workshop/07-observability/examples/reasoning-trace-example.md`.
 This block is the second thing to drop if you're behind (after the playground).
 
+**Room exercise — [Live 7: Find the step that should have paged you](../workshop/07-observability/exercises/live.md)**
+(4 min, trace on screen): the room reads
+`workshop/07-observability/examples/reasoning-trace-example.md` — a different
+green run — and finds the drop themselves (Step 2, `HIGH → MEDIUM`). Your demo
+report above flags Step 3 `LOW`; same lesson, two traces.
+
 ## 02:40 — AppClaw skills demo *(live demo, 15 min · Ch8)*
 
-Speaker-driven — no solo exercise in this format. Open Claude Code in the project
-root (`claude`) and paste this request (Exercise 8 Part A):
+**Room exercise first — [Live 8: Brief the skill before I do](../workshop/08-appclaw-skills/exercises/live.md)**
+(3 min, paper): before you paste anything, the room writes the three facts the
+skill can't know and the done-condition. Compare with the request below.
+
+Speaker-driven from here. Open Claude Code in the project root (`claude`) and
+paste this request (Exercise 8 Part A):
 
 ```
 /generate-appclaw-flow
@@ -225,6 +263,11 @@ with healing inside the emulator job — point at
 `.github/workflows/android-tests.yml`. For self-study: the complete examples
 ([examples/README.md](README.md)) and the ch9 helpers
 (`node examples/ch09-agent-ci/review-locators.js`). Take 2–3 questions. Close.
+
+**Room exercise — pick ONE closer** (five minutes covers Ch9–11; never end on a slide):
+- [Live 9: What does CI do here?](../workshop/09-ci-github/exercises/live.md) — 2 min, room vote. Technical room.
+- [Live 10: Pick one, name the barrier](../workshop/10-future-outlook/exercises/live.md) — 3 min, paper. Senior or mixed room.
+- [Live 11: Three lines before you leave](../workshop/11-qa-games/exercises/live.md) — 2 min, paper. Out of time or tired room.
 
 **If you're ahead:** one game from `workshop/11-qa-games/games/locator-quiz.md`
 (8 min) before Q&A, using the ch4 locator map as the answer sheet.

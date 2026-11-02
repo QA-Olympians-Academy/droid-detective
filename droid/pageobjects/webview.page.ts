@@ -9,8 +9,18 @@ class WebviewPage extends BasePage {
         return $('//android.webkit.WebView')
     }
 
+    // The web page keeps animating, so UiAutomator2 never sees the app go idle
+    // and waits its full waitForIdleTimeout (10 s default) before every command:
+    // 10–20 s per call on a software-rendered CI emulator, enough to time out the
+    // scroll test and the next screen's hook. Skip the idle wait on this screen.
     async navigate(): Promise<void> {
+        await browser.updateSettings({ waitForIdleTimeout: 0 })
         await this.tab.click()
+    }
+
+    async leave(): Promise<void> {
+        await $('~Home').click()
+        await browser.updateSettings({ waitForIdleTimeout: 10000 })
     }
 
     async scrollDown(): Promise<void> {
