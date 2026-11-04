@@ -10,7 +10,7 @@ class SwipePage extends BasePage {
     }
 
     get carousel() {
-        return $('//*[@resource-id="Carousel"]')
+        return $('//*[@resource-id="aCarousel"]')
     }
 
     async navigate(): Promise<void> {
